@@ -17,6 +17,7 @@
     --text:   #c8c8d8;
     --soft:   #9090a8;
     --accent: #7eb8b0;
+    --purple: #b07eb8;
     --them:   #e8e0d0;
     --you:    #b0c8b8;
     --glow:   rgba(126,184,176,0.08);
@@ -33,17 +34,13 @@
     overflow: hidden;
   }
 
-  /* scanlines */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.06) 2px,
-      rgba(0,0,0,0.06) 4px
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
     );
     pointer-events: none;
     z-index: 100;
@@ -81,10 +78,9 @@
     letter-spacing: 0.5px;
   }
 
-  #status .dot {
+  .dot {
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--accent);
     margin-right: 5px;
@@ -93,18 +89,32 @@
     box-shadow: 0 0 6px var(--accent);
   }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.25; }
+  .dot.offline {
+    background: var(--dim);
+    box-shadow: none;
+    animation: none;
   }
 
-  #clock {
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+  }
+
+  #spine-arc {
     margin-left: auto;
     font-family: 'VT323', monospace;
-    font-size: 18px;
+    font-size: 16px;
     color: var(--dim);
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    transition: color 0.4s;
   }
+
+  #spine-arc.at-g { color: var(--accent); }
 
   /* ── messages ── */
   #messages {
@@ -119,17 +129,16 @@
   #messages::-webkit-scrollbar-track { background: transparent; }
   #messages::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
 
-  .system-line {
+  .sys-line {
     text-align: center;
     color: var(--dim);
     font-size: 11px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    padding: 12px 0 20px;
+    padding: 10px 0 20px;
     flex-shrink: 0;
   }
 
-  /* message block */
   .msg {
     display: flex;
     flex-direction: column;
@@ -143,7 +152,8 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  .msg.new-group { margin-top: 16px; }
+  .msg.new-group    { margin-top: 16px; }
+  .msg.continuation .msg-header { display: none; }
 
   .msg-header {
     display: flex;
@@ -152,20 +162,18 @@
     padding: 0 2px 2px;
   }
 
-  .msg.continuation .msg-header { display: none; }
-
-  .msg-name {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
-
-  .msg-name.left  { color: #b07eb8; }
+  .msg-name { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+  .msg-name.left  { color: var(--purple); }
   .msg-name.right { color: var(--accent); }
 
-  .msg-time {
-    font-size: 11px;
+  .msg-time { font-size: 11px; color: var(--dim); }
+
+  /* spine badge beside ohai's name */
+  .spine-pos {
+    font-family: 'VT323', monospace;
+    font-size: 13px;
     color: var(--dim);
+    letter-spacing: 1px;
   }
 
   .msg-body {
@@ -181,7 +189,7 @@
     align-self: flex-start;
     background: var(--bg3);
     color: var(--them);
-    border-left: 2px solid #b07eb8;
+    border-left: 2px solid var(--purple);
   }
 
   .msg.right .msg-body {
@@ -189,6 +197,44 @@
     background: var(--bg2);
     color: var(--you);
     border-right: 2px solid var(--accent);
+  }
+
+  /* G-state glow on their bubble */
+  .msg.left.at-g .msg-body {
+    border-left-color: var(--accent);
+    box-shadow: -2px 0 12px rgba(126,184,176,0.15);
+  }
+
+  /* typing indicator */
+  #typing {
+    min-height: 26px;
+    padding: 4px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.25s;
+    flex-shrink: 0;
+  }
+
+  #typing.show { opacity: 1; }
+
+  #typing span { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; }
+
+  .dots { display: flex; gap: 3px; align-items: center; }
+  .dots b {
+    display: block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--purple);
+    animation: bdot 1.2s ease-in-out infinite;
+  }
+  .dots b:nth-child(2) { animation-delay: 0.2s; }
+  .dots b:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bdot {
+    0%,80%,100% { transform: translateY(0); opacity: 0.35; }
+    40%         { transform: translateY(-4px); opacity: 1; }
   }
 
   /* ── input ── */
@@ -201,7 +247,7 @@
     flex-shrink: 0;
   }
 
-  #who-label {
+  #you-label {
     font-size: 12px;
     font-weight: 700;
     color: var(--accent);
@@ -234,6 +280,7 @@
   }
 
   #msg-input::placeholder { color: var(--dim); }
+  #msg-input:disabled { opacity: 0.4; cursor: not-allowed; }
 
   #send-btn {
     background: none;
@@ -249,54 +296,14 @@
     align-self: flex-end;
   }
 
-  #send-btn:hover {
+  #send-btn:hover:not(:disabled) {
     border-color: var(--accent);
     color: var(--accent);
     box-shadow: 0 0 10px var(--glow);
   }
 
   #send-btn:active { transform: translateY(1px); }
-
-  /* ── name switcher ── */
-  #switcher {
-    padding: 0 20px 10px;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  #switcher span {
-    font-size: 11px;
-    color: var(--dim);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .side-btn {
-    font-family: 'VT323', monospace;
-    font-size: 15px;
-    padding: 2px 10px;
-    border-radius: 2px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    border: 1px solid var(--dim);
-    background: none;
-    color: var(--muted);
-    transition: all 0.15s;
-  }
-
-  .side-btn.active-you {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .side-btn.active-them {
-    border-color: #b07eb8;
-    color: #b07eb8;
-  }
-
-  .side-btn:hover { opacity: 0.8; }
+  #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -304,109 +311,222 @@
 
   <div id="header">
     <div id="roomname">ohai~</div>
-    <div id="status"><span class="dot"></span>private room</div>
-    <div id="clock"></div>
+    <div id="status">
+      <span class="dot" id="dot"></span>
+      <span id="status-text">connecting...</span>
+    </div>
+    <div id="spine-arc"></div>
   </div>
 
   <div id="messages">
-    <div class="system-line">— you entered the room —</div>
+    <div class="sys-line">— private room —</div>
   </div>
 
-  <div id="switcher">
-    <span>sending as</span>
-    <button class="side-btn active-you" id="btn-you" onclick="setSide('you')">you</button>
-    <button class="side-btn" id="btn-them" onclick="setSide('them')">ohai</button>
+  <div id="typing">
+    <span>ohai is thinking</span>
+    <div class="dots"><b></b><b></b><b></b></div>
   </div>
 
   <div id="input-wrap">
-    <div id="who-label">you:</div>
-    <textarea id="msg-input" placeholder="say something..." rows="1" autofocus></textarea>
-    <button id="send-btn">send</button>
+    <div id="you-label">you:</div>
+    <textarea id="msg-input" placeholder="say something..." rows="1" disabled></textarea>
+    <button id="send-btn" disabled>send</button>
   </div>
 
 </div>
 
 <script>
-  // ── state ──────────────────────────────────────────────────────────────────
-  let currentSide = 'you';   // 'you' | 'them'
-  let lastSide    = null;
+const SERVER = 'http://127.0.0.1:7700';
 
-  // ── clock ──────────────────────────────────────────────────────────────────
-  function tick() {
-    document.getElementById('clock').textContent =
-      new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
-  }
-  tick();
-  setInterval(tick, 10000);
+let lastSender  = null;
+let arcPositions = [];
+let waiting     = false;
 
-  // ── side switcher ──────────────────────────────────────────────────────────
-  function setSide(side) {
-    currentSide = side;
-    document.getElementById('who-label').textContent = side === 'you' ? 'you:' : 'ohai:';
-    document.getElementById('btn-you').className  = 'side-btn' + (side === 'you'  ? ' active-you'  : '');
-    document.getElementById('btn-them').className = 'side-btn' + (side === 'them' ? ' active-them' : '');
-    document.getElementById('msg-input').focus();
-  }
+// ── clock ─────────────────────────────────────────────────────────────────────
+function t() {
+  return new Date().toLocaleTimeString('en-US',
+    {hour:'2-digit', minute:'2-digit', hour12: false});
+}
 
-  // ── post message ───────────────────────────────────────────────────────────
-  function post(side, text) {
-    const msgs    = document.getElementById('messages');
-    const isNew   = side !== lastSide;
-    lastSide      = side;
+// ── escape ────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-    const name = side === 'you' ? 'you' : 'ohai';
-    const t    = new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+// ── scroll ────────────────────────────────────────────────────────────────────
+function scrollDown() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
 
-    const div = document.createElement('div');
-    div.className = `msg ${side === 'you' ? 'right' : 'left'} ${isNew ? 'new-group' : 'continuation'}`;
-    div.innerHTML = `
-      <div class="msg-header">
-        <span class="msg-name ${side === 'you' ? 'right' : 'left'}">${name}</span>
-        <span class="msg-time">${t}</span>
-      </div>
-      <div class="msg-body">${esc(text)}</div>
-    `;
+// ── post message ──────────────────────────────────────────────────────────────
+function post(side, text, meta = {}) {
+  const msgs  = document.getElementById('messages');
+  const isNew = side !== lastSender;
+  lastSender  = side;
 
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
+  const name = side === 'you' ? 'you' : 'ohai';
+
+  // spine badge for ohai
+  let badge = '';
+  if (side === 'ohai' && meta.position) {
+    badge = `<span class="spine-pos">${meta.position}</span>`;
   }
 
-  function esc(s) {
-    return s
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
+  const div = document.createElement('div');
+  div.className = [
+    'msg',
+    side === 'you' ? 'right' : 'left',
+    isNew ? 'new-group' : 'continuation',
+    meta.at_g ? 'at-g' : '',
+  ].filter(Boolean).join(' ');
 
-  // ── send ───────────────────────────────────────────────────────────────────
-  function send() {
-    const input = document.getElementById('msg-input');
-    const text  = input.value.trim();
-    if (!text) return;
+  div.innerHTML = `
+    <div class="msg-header">
+      <span class="msg-name ${side === 'you' ? 'right' : 'left'}">${name}</span>
+      ${badge}
+      <span class="msg-time">${t()}</span>
+    </div>
+    <div class="msg-body">${esc(text)}</div>
+  `;
 
-    post(currentSide, text);
+  msgs.appendChild(div);
+  scrollDown();
+}
 
-    input.value = '';
-    input.style.height = 'auto';
-    input.focus();
-  }
+function sysLine(text) {
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'sys-line';
+  d.textContent = text;
+  msgs.appendChild(d);
+  scrollDown();
+}
 
-  // ── input events ───────────────────────────────────────────────────────────
-  const input = document.getElementById('msg-input');
+// ── typing indicator ──────────────────────────────────────────────────────────
+function setTyping(on) {
+  document.getElementById('typing').classList.toggle('show', on);
+  if (on) scrollDown();
+}
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
+// ── spine arc ──────────────────────────────────────────────────────────────────
+function pushArc(pos) {
+  arcPositions.push(pos);
+  const el = document.getElementById('spine-arc');
+  el.textContent = arcPositions.slice(-9).join('→');
+  el.classList.toggle('at-g', pos === 'G');
+}
+
+// ── connection check ──────────────────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(`${SERVER}/state`, {signal: AbortSignal.timeout(2000)});
+    if (r.ok) {
+      const data = await r.json();
+      setOnline(true, data);
+      return true;
     }
-  });
+  } catch (_) {}
+  setOnline(false);
+  return false;
+}
 
-  input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-  });
+function setOnline(online, data = null) {
+  document.getElementById('dot').className = online ? 'dot' : 'dot offline';
+  document.getElementById('status-text').textContent =
+    online ? 'private room · ohai is here' : 'server offline';
+  document.getElementById('msg-input').disabled  = !online;
+  document.getElementById('send-btn').disabled   = !online;
+  if (online) document.getElementById('msg-input').focus();
+}
 
-  document.getElementById('send-btn').addEventListener('click', send);
+// ── send ──────────────────────────────────────────────────────────────────────
+async function send() {
+  if (waiting) return;
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  post('you', text);
+
+  waiting = true;
+  input.disabled       = true;
+  document.getElementById('send-btn').disabled = true;
+
+  // thinking delay — feels present, not instant
+  const delay = 500 + Math.random() * 700 + Math.min(text.length * 8, 800);
+  setTyping(true);
+  await sleep(delay);
+
+  let data;
+  try {
+    const res = await fetch(`${SERVER}/breathe`, {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({message: text}),
+    });
+    data = await res.json();
+  } catch (err) {
+    setTyping(false);
+    sysLine('— signal dropped —');
+    waiting = false;
+    setOnline(false);
+    return;
+  }
+
+  setTyping(false);
+
+  if (data.reply) {
+    pushArc(data.position || 'C');
+    post('ohai', data.reply, {
+      position: data.position,
+      at_g:     data.has_g || data.position === 'G',
+    });
+  }
+
+  waiting = false;
+  input.disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── input events ──────────────────────────────────────────────────────────────
+const input = document.getElementById('msg-input');
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+document.getElementById('send-btn').addEventListener('click', send);
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const online = await checkServer();
+  if (!online) {
+    sysLine('— start ohai_server.py to connect —');
+    // retry every 3s until connected
+    const poll = setInterval(async () => {
+      const ok = await checkServer();
+      if (ok) {
+        clearInterval(poll);
+        sysLine('— ohai connected —');
+      }
+    }, 3000);
+  }
+})();
 </script>
 </body>
 </html>
