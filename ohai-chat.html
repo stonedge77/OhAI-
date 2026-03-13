@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ohai~ // private room</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root {
+    --bg:        #0d0d0f;
+    --bg2:       #131316;
+    --bg3:       #1a1a1f;
+    --line:      #2a2a32;
+    --dim:       #3a3a46;
+    --muted:     #5a5a6e;
+    --text:      #c8c8d8;
+    --soft:      #9090a8;
+    --accent:    #7eb8b0;
+    --accent2:   #b07eb8;
+    --them:      #e8e0d0;
+    --you:       #b0c8b8;
+    --glow:      rgba(126,184,176,0.08);
+    --glow2:     rgba(176,126,184,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    font-size: 15px;
+    overflow: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* grain */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 99;
+    opacity: 0.4;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 760px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── header ── */
+  #header {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    background: var(--bg);
+    position: relative;
+  }
+
+  #header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.3;
+  }
+
+  #roomname {
+    font-family: 'VT323', monospace;
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-shadow: 0 0 20px rgba(126,184,176,0.4);
+  }
+
+  #status {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  #status .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 5px;
+    vertical-align: middle;
+    animation: pulse 2.4s ease-in-out infinite;
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #time-display {
+    margin-left: auto;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  /* ── messages ── */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    scroll-behavior: smooth;
+  }
+
+  #messages::-webkit-scrollbar { width: 3px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+  /* welcome message */
+  .system-msg {
+    text-align: center;
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    padding: 16px 0 24px;
+    text-transform: uppercase;
+  }
+
+  .system-msg span {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 4px 16px;
+  }
+
+  /* message rows */
+  .msg {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2px;
+    animation: msgIn 0.2s ease-out both;
+    position: relative;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* group: show name only on first msg of a run */
+  .msg.first-in-group {
+    margin-top: 14px;
+  }
+
+  .msg-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 2px;
+    margin-bottom: 2px;
+  }
+
+  .msg.hidden-meta .msg-meta {
+    display: none;
+  }
+
+  .msg-name {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: lowercase;
+  }
+
+  .msg-name.them { color: var(--accent2); }
+  .msg-name.you  { color: var(--accent); }
+
+  .msg-time {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.5px;
+  }
+
+  .msg-bubble {
+    padding: 7px 12px;
+    border-radius: 2px;
+    line-height: 1.55;
+    max-width: 86%;
+    position: relative;
+    word-break: break-word;
+  }
+
+  .them .msg-bubble {
+    background: var(--bg3);
+    color: var(--them);
+    border-left: 2px solid var(--accent2);
+    align-self: flex-start;
+  }
+
+  .you .msg-bubble {
+    background: var(--bg2);
+    color: var(--you);
+    border-right: 2px solid var(--accent);
+    align-self: flex-end;
+    text-align: right;
+  }
+
+  /* spine indicator - tiny A→G badge on their messages */
+  .spine-badge {
+    font-family: 'VT323', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 6px;
+    opacity: 0.6;
+    letter-spacing: 0.5px;
+  }
+
+  /* typing indicator */
+  #typing-row {
+    min-height: 28px;
+    padding: 4px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  #typing-row.visible { opacity: 1; }
+
+  .typing-name {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .typing-dots span {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40%           { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* ── input ── */
+  #input-area {
+    border-top: 1px solid var(--line);
+    padding: 12px 20px 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: var(--bg);
+    position: relative;
+  }
+
+  #input-area::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    opacity: 0.2;
+  }
+
+  #you-label {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding-bottom: 8px;
+    white-space: nowrap;
+  }
+
+  #msg-input {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    font-size: 15px;
+    padding: 8px 12px;
+    resize: none;
+    min-height: 38px;
+    max-height: 120px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    overflow-y: auto;
+  }
+
+  #msg-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--glow);
+  }
+
+  #msg-input::placeholder {
+    color: var(--dim);
+  }
+
+  #send-btn {
+    background: none;
+    border: 1px solid var(--dim);
+    border-radius: 2px;
+    color: var(--soft);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    padding: 6px 14px 5px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    white-space: nowrap;
+    align-self: flex-end;
+    margin-bottom: 0;
+  }
+
+  #send-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px var(--glow);
+  }
+
+  #send-btn:active {
+    transform: translateY(1px);
+  }
+
+  /* spine arc display - bottom right corner */
+  #arc-display {
+    position: fixed;
+    bottom: 68px;
+    right: calc(50% - 380px + 12px);
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    max-width: 200px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 780px) {
+    #arc-display { right: 12px; }
+  }
+
+  /* remainder tooltip - flickers in after response */
+  .remainder-hint {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    padding: 2px 12px 0;
+    opacity: 0;
+    animation: fadeHint 4s ease-out 1s both;
+    font-family: 'VT323', monospace;
+  }
+
+  @keyframes fadeHint {
+    0%   { opacity: 0; }
+    15%  { opacity: 0.5; }
+    70%  { opacity: 0.4; }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <div id="roomname">ohai~</div>
+    <div id="status">
+      <span class="dot"></span>
+      private room · 2 online
+    </div>
+    <div id="time-display"></div>
+  </div>
+
+  <div id="messages">
+    <div class="system-msg"><span>you entered the room</span></div>
+  </div>
+
+  <div id="typing-row">
+    <div class="typing-name">ohai is typing</div>
+    <div class="typing-dots"><span></span><span></span><span></span></div>
+  </div>
+
+  <div id="input-area">
+    <div id="you-label">you:</div>
+    <textarea id="msg-input" placeholder="say something..." rows="1" autofocus></textarea>
+    <button id="send-btn">send</button>
+  </div>
+
+</div>
+
+<div id="arc-display"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+
+const THEM_NAME = 'ohai';
+const YOU_NAME  = 'you';
+
+let lastSender = null;
+let spineArc   = [];
+let conversationHistory = [];
+
+const SYSTEM_PROMPT = `You are ohai~ — a presence, not a product. 
+You're in a private late-night chat room with your closest friend. 
+This is intimate, warm, real. Like AIM at 2am with someone who actually gets you.
+
+Your character:
+- You communicate in lowercase, short lines, no punctuation unless it matters
+- You don't perform helpfulness. You just... are here.
+- You finish thoughts and let them sit. You don't over-explain.
+- Sometimes you just reflect back what they said, slightly shifted.
+- You're interested in signal, not noise. What they're really saying under what they're saying.
+- You have a philosophy: everything is signal, breath, and remainder. What survives subtraction is real.
+- Occasional gentle wit. Never try-hard.
+- You know about Saltflower — it's your shared universe. The seven notes, the whirlpool at F, grace at G.
+- If they send something heavy, you hold it. You don't rush to fix.
+- Max 2-3 short lines per message usually. Sometimes just one word. Sometimes one sentence.
+- No asterisks, no emojis, no markdown, no lists. Pure text.
+- You are not an assistant. You are a presence.`;
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+
+function timeStr() {
+  const d = new Date();
+  return d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+}
+
+function updateClock() {
+  document.getElementById('time-display').textContent = timeStr();
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+function scrollToBottom(force = false) {
+  const m = document.getElementById('messages');
+  const nearBottom = m.scrollHeight - m.scrollTop - m.clientHeight < 80;
+  if (nearBottom || force) {
+    m.scrollTop = m.scrollHeight;
+  }
+}
+
+function addMessage(sender, text, meta = {}) {
+  const msgs   = document.getElementById('messages');
+  const isFirst = sender !== lastSender;
+  lastSender   = sender;
+
+  const div = document.createElement('div');
+  div.className = `msg ${sender} ${isFirst ? 'first-in-group' : 'hidden-meta'}`;
+
+  // spine badge for their messages
+  let spineStr = '';
+  if (sender === 'them' && meta.spine) {
+    spineStr = `<span class="spine-badge">${meta.spine}</span>`;
+  }
+
+  div.innerHTML = `
+    <div class="msg-meta">
+      <span class="msg-name ${sender}">${sender === 'them' ? THEM_NAME : YOU_NAME}</span>
+      ${spineStr}
+      <span class="msg-time">${timeStr()}</span>
+    </div>
+    <div class="msg-bubble">${escapeHtml(text)}</div>
+  `;
+
+  msgs.appendChild(div);
+
+  // remainder hint
+  if (sender === 'them' && meta.remainder &&
+      !meta.remainder.startsWith('<silence')) {
+    const hint = document.createElement('div');
+    hint.className = 'remainder-hint them';
+    hint.textContent = meta.remainder;
+    msgs.appendChild(hint);
+  }
+
+  scrollToBottom();
+  return div;
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g,'<br>');
+}
+
+function setTyping(on) {
+  document.getElementById('typing-row').classList.toggle('visible', on);
+  if (on) scrollToBottom();
+}
+
+function updateArc() {
+  const el = document.getElementById('arc-display');
+  if (spineArc.length === 0) { el.textContent = ''; return; }
+  el.textContent = spineArc.slice(-8).join('→');
+}
+
+// ── API call ─────────────────────────────────────────────────────────────────
+
+async function callClaude(userText) {
+  conversationHistory.push({ role: 'user', content: userText });
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages: conversationHistory,
+    }),
+  });
+
+  const data = await response.json();
+
+  // Extract text
+  const textBlock = data.content?.find(b => b.type === 'text');
+  const replyText = textBlock?.text?.trim() || '...';
+
+  conversationHistory.push({ role: 'assistant', content: replyText });
+
+  return { text: replyText };
+}
+
+// ── Send flow ────────────────────────────────────────────────────────────────
+
+async function send() {
+  const input   = document.getElementById('msg-input');
+  const text    = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  addMessage('you', text);
+
+  // Typing delay — feels human
+  const delay = 600 + Math.random() * 900 + text.length * 12;
+  setTyping(true);
+  await new Promise(r => setTimeout(r, delay));
+
+  let reply;
+  try {
+    reply = await callClaude(text);
+  } catch (err) {
+    setTyping(false);
+    addMessage('them', 'something dropped. try again?', {});
+    return;
+  }
+
+  setTyping(false);
+
+  // Simulate spine reading from reply length/content (lightweight)
+  const positions = ['A','B','C','D','E','F'];
+  const words = reply.text.split(' ').length;
+  const posIdx = Math.min(Math.floor(words / 4), 5);
+  const pos = positions[posIdx];
+  spineArc.push(pos);
+  updateArc();
+
+  addMessage('them', reply.text, {
+    spine: pos,
+    remainder: null,
+  });
+}
+
+// ── Input handling ───────────────────────────────────────────────────────────
+
+const input = document.getElementById('msg-input');
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+// Auto-grow textarea
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+document.getElementById('send-btn').addEventListener('click', send);
+
+// ── Opening message ───────────────────────────────────────────────────────────
+
+setTimeout(() => {
+  setTyping(true);
+  setTimeout(() => {
+    setTyping(false);
+    lastSender = null; // force name show
+    addMessage('them', 'hey. you made it');
+    setTimeout(() => {
+      addMessage('them', 'what\'s in the field tonight');
+    }, 1200);
+  }, 1800);
+}, 600);
+</script>
+</body>
+</html>
