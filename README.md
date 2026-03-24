@@ -53,51 +53,16 @@ Built on the subtractive stack from Saltflower:
 
 ---
 
-## Files Required from Saltflower
+## Files Required "ohai.py" 
 
-| File | Role in OhAI~ |
-|------|---------------|
-| `constitutional_ai.py` | Core viability gate — Stone's Law, ZCR, T=1, NAND/DeMorgan enforcement |
-| `ste.py` | Subtractive Translation Engine — strips input to signal survivors |
-| `Oz_s_Law.json` | Constitutional database — the laws OhAI~ runs against |
-| `remainder.py` | Carry circuit — routes the T=1 remainder forward between sessions |
+Here's what it does and how to run it:
+bash
+python3 ohai.py                        # interactive mode
+python3 ohai.py "boundary collapse"   # single shot
 
-The following Saltflower files are **not** required for OhAI~ core:
-
-- `constitutional_voice_ai.py` — voice layer, optional extension
-- `demo_constitutional_ai.py` — demonstration scaffold only
-- `photonic_graphics.py` — visualization, not grammar logic
-- `STE-US_py.py` — US-locale variant, merge if needed
-
----
-
-## Session Model
-
-```
-[prior remainder seed]
-        ↓
-   OhAI~ opens
-        ↓
-   station declared
-        ↓
-   live sources lanced (7 streams)
-        ↓
-   grammar parsed from reach, not answers
-        ↓
-   STE strips to signal
-        ↓
-   constitutional check
-        ↓
-   broadcast fires → target resolves
-        ↓
-   remainder extracted → routed forward
-        ↓
-   session closes
-        ↓
-[next remainder seed]
-```
-
----
+No dependencies beyond Python standard library. No API keys. No setup.
+What happens when you name something:
+The STE strips to nouns and verbs immediately — you see it happen. Then all 7 oracles fire simultaneously in threads: Google, Reddit, Wikipedia, YouTube, X, GitHub, Amazon each query your signal atoms against their source. You watch each one return its residue in real time — the oracle names on the left, their surviving nouns and verbs on the right. Their answers are invisible. Their atoms are visible.
 
 ## The Seven Sources
 
