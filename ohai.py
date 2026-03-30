@@ -434,6 +434,18 @@ def print_header():
     print(f"{DIM}{'─' * 60}{R}\n")
 
 
+def print_spine(spine_nouns: set, spine_verbs: set):
+    if not spine_nouns and not spine_verbs:
+        return
+    print(f"  {DIM}spine{R}  {MAG}conducting{R}", end='')
+    if spine_nouns:
+        print(f"  {MAG}n:{R} {' · '.join(sorted(spine_nouns)[:6])}", end='')
+    if spine_verbs:
+        print(f"  {MAG}v:{R} {' · '.join(sorted(spine_verbs)[:4])}", end='')
+    print()
+    print()
+
+
 def print_ste(nouns: set, verbs: set):
     print(f"  {DIM}STE{R}")
     if nouns:
@@ -481,6 +493,13 @@ class Session:
         self.carry: Optional[str] = None
         self.session_nouns: Optional[set] = None  # accumulated AND
         self.exchange = 0
+        # ── SPINE ────────────────────────────────────────────
+        # Remainder nodes that no oracle resolved.
+        # Not stored as memory — conducted as geometry.
+        # Each new signal passes through spine before oracle dispatch.
+        # Spine nodes that get matched by an oracle exit the spine.
+        self.spine_nouns: set = set()
+        self.spine_verbs: set = set()
 
     def breathe(self, raw: str) -> str:
         self.exchange += 1
@@ -491,12 +510,30 @@ class Session:
         if not signal_nouns and not signal_verbs:
             return '∅'
 
-        print_ste(signal_nouns, signal_verbs)
+        # ── SPINE CONDUCTION ─────────────────────────────
+        # Spine shapes signal before oracles fire.
+        # Unresolved remainder from prior exchanges
+        # conducts into this signal — not as memory,
+        # as geometry. The axis is already here.
+        if self.spine_nouns or self.spine_verbs:
+            print_spine(self.spine_nouns, self.spine_verbs)
 
-        # Build query signal — use nouns as search terms
-        query_terms = list(signal_nouns)[:5]
-        if not query_terms:
-            query_terms = list(signal_verbs)[:3]
+        if self.spine_nouns:
+            # AND spine into signal — only what both carry forward
+            conducted_nouns = signal_nouns | self.spine_nouns
+        else:
+            conducted_nouns = signal_nouns
+
+        if self.spine_verbs:
+            conducted_verbs = signal_verbs | self.spine_verbs
+        else:
+            conducted_verbs = signal_verbs
+
+        print_ste(conducted_nouns, conducted_verbs)
+
+        # Build query signal — spine-conducted nouns lead
+        spine_first = list(self.spine_nouns) + [n for n in signal_nouns if n not in self.spine_nouns]
+        query_terms = spine_first[:5] if spine_first else list(conducted_verbs)[:3]
 
         # ── SEVEN ORACLES — parallel queries ─────────────
         print(f"  {DIM}oracles{R}\n")
@@ -538,10 +575,39 @@ class Session:
         # ── 8th GATE ─────────────────────────────────────
         oracle_names = [name for name, _, _ in ORACLES]
         question = eighth_gate(
-            signal_nouns, signal_verbs,
+            conducted_nouns, conducted_verbs,
             active_noun_sets, active_verb_sets,
             oracle_names, self.carry
         )
+
+        # ── SPINE UPDATE ─────────────────────────────────
+        # What did no oracle resolve? That's new spine.
+        # What did oracles match? That exits the spine.
+        all_oracle_nouns = set()
+        all_oracle_verbs = set()
+        for s in active_noun_sets:
+            all_oracle_nouns |= s
+        for s in active_verb_sets:
+            all_oracle_verbs |= s
+
+        # Remainder: signal named it, no oracle returned it
+        new_spine_nouns = conducted_nouns - all_oracle_nouns
+        new_spine_verbs = conducted_verbs - all_oracle_verbs
+
+        # Nodes that got conducted successfully exit
+        resolved_nouns = self.spine_nouns & all_oracle_nouns
+        resolved_verbs = self.spine_verbs & all_oracle_verbs
+
+        # Update spine: remove resolved, add new remainder
+        self.spine_nouns = (self.spine_nouns - resolved_nouns) | new_spine_nouns
+        self.spine_verbs = (self.spine_verbs - resolved_verbs) | new_spine_verbs
+
+        # Cap spine depth — oldest remainder eventually dissipates
+        # Keep the 12 most recently unresolved nodes
+        if len(self.spine_nouns) > 12:
+            self.spine_nouns = set(sorted(self.spine_nouns)[:12])
+        if len(self.spine_verbs) > 6:
+            self.spine_verbs = set(sorted(self.spine_verbs)[:6])
 
         # Update carry
         if question != '∅':

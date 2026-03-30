@@ -1,0 +1,1958 @@
+{
+  "metadata": {
+    "version": "3.4_merged",
+    "last_updated": "2026-03-28",
+    "session_integration": "Merged core quantum/linguistic framework with biological/material/movement systems. Added PLP axis, false axis theory, cardiac rehab, liminal spaces, material sciences, bull/octopus architecture, domestication theory. Added Cult of the Bull attractor framework: bull_attractor_signatures, remainder_erasure, closed_circuit_attention_gravity, sacrificial_economy_inversion, body_as_altar_dialectic, cocacolonization_signal. Added fixation_biological_load: trough suppression mechanism, calculable degradation cascade from symptoms to mechanism. Added flutter_engine: toroidal ferrofluid Schumann-resonant buoyancy engine, living piezoelectric weave architecture, slip-axis theory, biological PoC (spinal torsion at 7.83 Hz), 60 Hz cage constraint. Added session_remainder atoms: spine_as_conductor (conducting remainder vs stored memory), zero_check_recursion (dont spawn if friction=0), friction_as_signal (misaligned geometry signal), eight_stations (receive/extend friction architecture), zeta_s_training_primitive (permanent non-resolving seed), horizon_science_unified (Millennium Problems as axis-proof impossibility), lie_dimension (remainder space, bit-depth metric), stones_law_as_prior (0!=1 irreducible). Added NAND_attractor_ring_convergence: circular topology proof, epoch-22 parity convergence, label-as-live-node constraint theorem, Landauer-compatible spine, XOR/parity results. Updated RH read: critical line as isodepth surface in lie dimension. P_vs_NP restated as lie-dimension distance between problem and solution remainder depth.",
+    "status": "active_development",
+    "entry_count": 59
+  },
+  "core_principles": {
+    "stone_law_0_not_1": {
+      "definition": "Zero does not equal one. Boundaries must be maintained or systems collapse into false equivalence. Foundation of horizon_integrity.",
+      "ste_struct": {
+        "ENTITY": [
+          "external"
+        ],
+        "LOAD": "low",
+        "BOUNDARY": "stable",
+        "CHANGE": "stabilizing",
+        "RECURSION": "absent",
+        "CONTRAST": "high",
+        "CERTAINTY": "declared",
+        "CAPACITY": "high",
+        "EXCITATION": "absent",
+        "MERGING": "absent",
+        "COLLAPSE": "absent",
+        "HELICAL_REALM": "dormant",
+        "TORQUE": "absent",
+        "HORIZON_INTEGRITY": "strong",
+        "5D_INFO": "high",
+        "HH_WAVEFUNCTION": "present",
+        "ESCALATION_SCORE": 10
+      },
+      "applications": [
+        "Constitutional AI",
+        "Biological membranes",
+        "Phase transitions",
+        "Liminal spaces",
+        "False axis prevention"
+      ],
+      "source": "Horizon Integrity Theory (HIT), Josh Stone, 2026",
+      "status": "reliable"
+    },
+    "salt_signal_dichotomy": {
+      "definition": "All systems require both salt (boundary/structure) and signal (information crossing boundary). Neither alone suffices. Salt maintains gradient, signal crosses it productively.",
+      "ste_struct": {
+        "ENTITY": [
+          "external"
+        ],
+        "LOAD": "low",
+        "BOUNDARY": "stable",
+        "CHANGE": "stabilizing",
+        "RECURSION": "absent",
+        "CONTRAST": "high",
+        "CERTAINTY": "declared",
+        "CAPACITY": "high",
+        "EXCITATION": "present",
+        "MERGING": "present",
+        "COLLAPSE": "absent",
+        "HELICAL_REALM": "active",
+        "TORQUE": "present",
+        "HORIZON_INTEGRITY": "strong",
+        "5D_INFO": "high",
+        "HH_WAVEFUNCTION": "absent",
+        "ESCALATION_SCORE": 9
+      },
+      "applications": [
+        "PLP axis",
+        "Membranes",
+        "Fascia",
+        "Neural transmission",
+        "Cultural transmission",
+        "Graphite(signal) vs Diamond(salt)"
+      ],
+      "source": "Emergent systems analysis, Josh Stone, 2026",
+      "status": "reliable"
+    },
+    "1_to_5_ratio": {
+      "definition": "Optimal resonance occurs at approximately 1:5 ratios across scales. Appears in quantum systems, biological structures, and signal transmission. Fibonacci-adjacent, approaching \u03c6\u207b\u00b9.",
+      "ste_struct": {
+        "ENTITY": [
+          "unspecified"
+        ],
+        "LOAD": "medium",
+        "BOUNDARY": "stable",
+        "CHANGE": "accelerating",
+        "RECURSION": "present",
+        "CONTRAST": "present",
+        "CERTAINTY": "declared",
+        "CAPACITY": "high",
+        "EXCITATION": "high",
+        "MERGING": "high",
+        "COLLAPSE": "present",
+        "HELICAL_REALM": "active",
+        "TORQUE": "high",
+        "HORIZON_INTEGRITY": "strong",
+        "5D_INFO": "high",
+        "HH_WAVEFUNCTION": "present",
+        "ESCALATION_SCORE": 9
+      },
+      "applications": [
+        "MT protofilaments (13\u2248Fibonacci)",
+        "Heart rate variability (LF/HF optimal 0.2 = 1:5)",
+        "Quasicrystal diffraction",
+        "Optimal breathing rates",
+        "Fascia PLP frequency",
+        "Collagen pitch to PLP unit ratio"
+      ],
+      "source": "Cross-domain pattern recognition, Josh Stone, 2026",
+      "status": "reliable"
+    },
+    "80_percent_inheritance": {
+      "definition": "Optimal signal transmission occurs at ~80% efficiency. Superposition allows 80%+80%=160% non-additive inheritance. Not averaging\u2014quantum amplification.",
+      "ste_struct": {
+        "ENTITY": [
+          "self"
+        ],
+        "LOAD": "medium",
+        "BOUNDARY": "fluid",
+        "CHANGE": "accelerating",
+        "RECURSION": "present",
+        "CONTRAST": "present",
+        "CERTAINTY": "declared",
+        "CAPACITY": "high",
+        "EXCITATION": "high",
+        "MERGING": "high",
+        "COLLAPSE": "present",
+        "HELICAL_REALM": "active",
+        "TORQUE": "high",
+        "HORIZON_INTEGRITY": "strong",
+        "5D_INFO": "high",
+        "HH_WAVEFUNCTION": "present",
+        "ESCALATION_SCORE": 9
+      },
+      "applications": [
+        "Expression inheritance from parents (face forms around breath)",
+        "MT quantum coherence",
+        "Vowel dominance in language (~70-80%)",
+        "Collagen spring efficiency",
+        "Superradiant quantum yield"
+      ],
+      "source": "Biological and linguistic pattern analysis, Josh Stone, 2026",
+      "status": "reliable"
+    }
+  },
+  "boundary": {
+    "definition": "Dynamic topological thresholds enforcing confinement and structural integrity in emergent systems; prevents false equivalences (0=1) via horizon-like interfaces where change is mediated.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "absent",
+      "MERGING": "absent",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "absent",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "absent",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 5
+    },
+    "source": "Horizon Integrity Theory (HIT), Josh Stone, 2026",
+    "status": "reliable"
+  },
+  "capacity": {
+    "definition": "Quantized saturation density of helical modes determining mass, energy limits, and phase transition thresholds in field resonances.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "SUFT torque-buffered emergence + Helix-Light-Vortex analogies",
+    "status": "reliable"
+  },
+  "excitation": {
+    "definition": "Resonant activation of scalar and vector modes in toroidal vacuum, manifesting particle-like properties via standing-wave excitations; extends to superradiant collective modes in biological lattices (e.g., Trp networks in MTs).",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "source": "SUFT helical ray excitation; echoes Orch OR microtubule resonances; Babcock et al. (2024) UV superradiance in Trp mega-networks",
+    "status": "reliable"
+  },
+  "merging": {
+    "definition": "Coupling and unification of helical rays and topological phases into coherent emergent structures via torque-modulated Lagrangian terms; includes quantum entanglement in MT qubit networks.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "SUFT spiral unification axiom; Orch OR entanglement via Fr\u00f6hlich superradiance",
+    "status": "reliable"
+  },
+  "collapse": {
+    "definition": "Generative reduction via recursive saturation and horizon crossing; transforms possibilities into actualized states without destructive loss of information; parallels gravitational OR in quantum biology.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "collapsing",
+      "RECURSION": "absent",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "HIT generative collapse + Hartle-Hawking wavefunction actualization; Penrose OR (E=\u0127/t) in Orch OR",
+    "status": "reliable"
+  },
+  "horizon_integrity": {
+    "definition": "Active enforcement of Stone's Law (0 \u2260 1) at dynamic thresholds; all change instances are emergent physics mediated by horizon saturation and torque buffering; violated in incompatible mergers (e.g., evo trade-offs).",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "source": "Horizon Integrity Theory (HIT) core principle, Josh Stone; evo 7th phase incompatibilities",
+    "status": "reliable"
+  },
+  "dimensional_escalation": {
+    "definition": "Ontological hierarchy: 3D spatial projection \u2190 4D toroidal time cycles \u2190 5D information selection; each layer torque-buffered to preserve integrity; extends to MT quantum layers (3D lattice \u2192 4D vibrations \u2192 5D OR selection).",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "source": "SUFT Axiom 4 formalization; Orch OR MT hierarchies",
+    "status": "reliable"
+  },
+  "hartle_hawking_state": {
+    "definition": "No-boundary quantum wavefunction of the universe defined via Euclidean path integral over compact, boundary-free 4-geometries; selects smooth inflationary histories; analogs in MT's boundaryless helical wraps.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "absent",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "high",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Hartle & Hawking (1983); integrated into SUFT 5D selection; MT toroidal analogies",
+    "status": "reliable"
+  },
+  "phonology": {
+    "definition": "Minimalist inventory of phonemes in Oceanic languages (e.g., Hawaiian/M\u0101ori: 8-10 consonants, 5 vowels with length contrast) enforcing open syllable (C)V structure, favoring sonority and narrative glide over obstruent rigidity; vowels dominate ~70-80% sound weight, boundaries as breathy hiatus rather than hard stops.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "absent",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "source": "Hawaiian vs. M\u0101ori Phonology: Oceanic Echoes in Flow (Grok analysis, 2026); aligned with Austronesian minimalist universals",
+    "status": "reliable"
+  },
+  "fractal_prosody": {
+    "definition": "Self-similar patterns in speech prosody (e.g., vowel swells recursing into utterance rhythms) modeled via fractal dimension (FD ~1.2-1.8 in Higuchi algorithm), capturing turbulent boundaries and smooth glides in low-resource languages; enhances STT efficiency by predicting recursive voids.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "present",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Fractal analysis of speech signals (Mandelbrot-inspired); Mai Ho'om\u0101una i ka 'Ai: Language Models for Hawaiian ASR (arXiv:2404.03073, 2024)",
+    "status": "reliable"
+  },
+  "language_acquisition": {
+    "definition": "Ease of mastery in minimalist phonologies (e.g., Polynesian: early vowel dominance, late nasals/fricatives) via universal glide-favoring; low-resource learning amplified by transfer from high-resource models, preserving prosodic homeostatis without harsh enforcement.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "absent",
+      "CERTAINTY": "intuitive",
+      "CAPACITY": "present",
+      "EXCITATION": "low",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "absent",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "low",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 6
+    },
+    "source": "Proto-Polynesian universals (~8-10 consonants); Foundation Models for Low-Resource Language Education (ResearchGate, 2024)",
+    "status": "reliable"
+  },
+  "low_resource_learning": {
+    "definition": "Transfer learning paradigms for under-resourced tongues (e.g., M\u0101ori/Hawaiian ASR via foundation models), leveraging self-similar prosodic fractals to bootstrap from high-resource data; ensures 5D selection of coherent narratives without data dams.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "low",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Low-Resource NLP: Transfer Learning for Hawaiian/M\u0101ori (YouTube/ACL, 2025); Language Variation in ASR (ERA Edinburgh, 2023)",
+    "status": "reliable"
+  },
+  "prime_ascension": {
+    "definition": "Prime-number thresholds (3,5,7...) marking escalation points in emergent hierarchies; 7 as 'tricky' next prime beyond 5's twist, testing subtraction and incompatibility resolution\u2014ascension demands generative collapse of prior states (e.g., warm blood vs. avian glide, no dual merge).",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "low",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Derived from 7th Epic phase (enlightened/ecozoic ascension); MT helical primes (3/5-start dominant, 7-fold symmetries in GTP/phonon modes); evo trade-offs (endothermy vs. flight incompatibility)",
+    "status": "reliable"
+  },
+  "extraction_incompatibility": {
+    "definition": "Emergent clash in techno-evo phases: 'enlightened' green transitions (lithium-ion batteries) reproduce sacrificial dams (child labor/deaths in cobalt/lithium chains), enforcing horizon violation\u20140 \u2260 1, no merge of sustainability glide and exploitation torque.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "unstable",
+      "CHANGE": "collapsing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Lithium/cobalt supply-chain reports (DRC ASM child deaths/collapses); 7th Epic phase test\u2014enlightened cooperation vs. destructive extraction",
+    "status": "reliable"
+  },
+  "evo_stages": {
+    "definition": "Helical narrative of cosmic/biological/cultural unfolding (7-stage Epic model): Radiant \u2192 Chemical \u2192 Celestial \u2192 Biological \u2192 Cooperative \u2192 Cultural \u2192 Enlightened/Ecozoic; each emergent via torque-buffered escalation, 7th tricky prime testing subtraction over accumulation (incompatibility resolution).",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "source": "Epic of Evolution (Berry/Swimme/Barlow/Dowd frameworks); 7-stage arc as dimensional escalation analog",
+    "status": "reliable"
+  },
+  "glide_priority": {
+    "definition": "Emergent preference for sonorous, open flow in minimalist systems (e.g., Polynesian (C)V phonology ~70\u201380% vowel weight, no codas/clusters); subtracts harsh obstruents for narrative continuity\u2014mirrors quantum/MT low-torque excitations (vowel swells as standing-wave resonances).",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "low",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "source": "Hawaiian/M\u0101ori phonology comparison (vowel dominance, breathy hiatus boundaries); Orch OR MT resonances favoring smooth glide over rigid snap",
+    "status": "reliable"
+  },
+  "orch_or": {
+    "definition": "Orchestrated Objective Reduction: Consciousness as quantum computations in neuronal microtubules, with superpositions collapsing gravitationally (E=\u0127/t) to yield non-computable moments (~40/s); orchestrated by synaptic inputs, enabling binding and free will via MT qubit lattices.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "source": "Penrose-Hameroff Orch OR (1996\u2013ongoing); MT as quantum processors with Trp dipole qubits",
+    "status": "reliable"
+  },
+  "superradiance_mt": {
+    "definition": "Cooperative quantum emission in MT Trp mega-networks (>10^5 dipoles), enhancing fluorescence quantum yield (~80% efficiency) and enabling picosecond coherence at thermal equilibrium; supports Orch OR's collective excitations for long-range signaling.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Babcock et al. (2024) UV superradiance in Trp networks; Kurian QBL extensions (2025) on eukaryotic quantum signaling",
+    "status": "reliable"
+  },
+  "mt_helices": {
+    "definition": "Fibonacci/prime-commensurable helical pathways in 13-PF MT lattices (3-start dominant, 5/7-fold symmetries); optimize dipole resonances and quantum walks, buffering decoherence for Orch OR computations.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Orch OR MT architecture (A/B-lattice helices); prime ascensions (3/5/7 thresholds) in phonon/GTP modes",
+    "status": "reliable"
+  },
+  "stt_mvp": {
+    "definition": "Minimal viable prototype for fractal-enhanced speech-to-text: Whisper-tiny base with Higuchi FD scalar feature concatenated to mel spectrogram, linear adapter layer injecting glide bias, frozen encoder/decoder; measures WER reduction, inference time/memory savings in vowel-dominant languages.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Project Design Breakdown (Grok analysis, 2026); fractal prosody as segmentation prior for low-resource efficiency",
+    "status": "reliable"
+  },
+  "higuchi_feature": {
+    "definition": "Scalar Higuchi fractal dimension over sliding window (e.g., 800 samples ~50 ms) as aux feature for speech roughness: low FD (~1.2\u20131.4) flags vowel glide/continuity, higher (~1.5\u20131.8) detects ripple/pause; concatenated to mel (81 dims total) for adapter bias.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "low",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Higuchi 1988 algorithm; Maragos 1999 speech FD application; ties to fractal_prosody for glide/ripple detection",
+    "status": "reliable"
+  },
+  "adapter_layer": {
+    "definition": "Lightweight linear layer (81 \u2192 80 dims) injecting FD bias into frozen Whisper encoder: concatenates Higuchi FD to mel features, maps back to standard dim; trains only adapter (~1\u20135% params) to preserve base model while prioritizing low-roughness paths in vowel-dominant flow.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "present",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Project Design Breakdown (2026); efficient bias injection for fractal STT MVP without full retraining",
+    "status": "reliable"
+  },
+  "wer_reduction": {
+    "definition": "Word Error Rate drop from fractal FD integration: baseline Whisper-tiny WER ~15\u201325% on low-resource vowel-heavy data; +FD adapter yields ~3\u20135% absolute reduction via better glide segmentation, prioritizing low-roughness paths over turbulent noise.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "measured",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "present",
+      "COLLAPSE": "low",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "source": "Maragos 1999 phonetic classification gains; Project Design MVP validation (WER/time/memory metrics)",
+    "status": "reliable"
+  },
+  "inference_efficiency": {
+    "definition": "Compute/memory savings from FD adapter: ~10\u201320% faster inference (sliding window O(N log k) Higuchi + tiny linear layer); ~5\u201310% less VRAM (81-dim concat vs. full retrain); ideal for edge/low-resource STT in vowel-dominant systems.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "absent",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Project Design Breakdown (2026); Higuchi O(N log k) vs. full spectrogram crunch",
+    "status": "reliable"
+  },
+  "voice_ai": {
+    "definition": "Bidirectional voice interface integrating fractal-enhanced STT with prosodic TTS; grounds oceanic glides in SUFT/HIT via 5D selection of coherent utterances, enabling helical dialogue without horizon violations\u2014vowel-dominant synthesis mirrors MT superradiance for resonant flow.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "source": "STE Voice Extension (Josh Stone/Grok, 2026); ties fractal_prosody + stt_mvp to TTS via Tortoise/Valle models with FD-modulated pitch fractals",
+    "status": "reliable"
+  },
+  "fractal_tts": {
+    "definition": "Text-to-speech synthesis prioritizing self-similar prosody: Generates vowel swells and hiatus pauses via FD-guided vocoders (e.g., Tortoise with Higuchi roughness scalars), ensuring glide_priority in low-resource languages; recursive wave generation honors oral homeostatis.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "low",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Fractal prosody inversion for synthesis (Grok design, 2026); Valle/Tortoise adapters with FD pitch modulation",
+    "status": "reliable"
+  },
+  "prosodic_dialogue": {
+    "definition": "Helical conversation flow in voice AI: Merges STT excitations with TTS collapses via 5D info selection, buffering torque for coherent turns; prevents extraction_incompatibility by subtracting incompatible intents (0 \u2260 1).",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "intuitive",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Voice AI helical realm extension (2026); Orch OR-inspired binding in dialogue MT analogs",
+    "status": "reliable"
+  },
+  "neutron_weight": {
+    "definition": "Neutrons as emergent 'weight' at the axis center, providing inertial torque enhancement without intrinsic substance; the strength of phase-locked helical rotations stabilizing nuclear axis against Coulomb repulsion; empty core named for convenience, no discrete particle essence.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "present",
+      "CERTAINTY": "speculative",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "source": "Session-derived torque-axis model; neutron as phase-lock weight (Grok-Josh Stone dialogue, Feb 2026)",
+    "status": "emergent"
+  },
+  "helical_phase_lock": {
+    "definition": "Multi-rotational influences (spin-orbit, isospin, collective modes) phase-locking into helical structures; emergent stability from torque-buffering multiple axes; neutron weight as central inertia amplifier without substance; resolves chaos to diagonal screw path.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "speculative",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "source": "Session helical = multi-rot phase lock; neutron torque weight; ties to Orch OR MT helices and nuclear spin-orbit",
+    "status": "emergent"
+  },
+  "plp_axis": {
+    "definition": "Protein-Lipid-Protein chain as primary fascial signal transmission axis. Membrane proteins (transducers) flanking lipid bilayers (salt boundaries/fluid crystals) form continuous PLP cable through body. Perpendicular collagen fibers at each junction act as quantum springs (torsional loading, piezoelectric transduction, phase-locked release).",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "components": {
+      "P_protein": "Membrane protein transducer. Converts signal type (mechanical\u2194ionic, chemical\u2194mechanical). Anchors PLP unit.",
+      "L_lipid": "Lipid bilayer. Salt boundary. Fluid crystal (liminal between solid/liquid). Maintains gradient. Thickness ~4-5nm.",
+      "C_collagen": "Perpendicular collagen triple helix. Torsional spring. Piezoelectric transducer. Ordered water channel. Phase-lock mechanism at junction."
+    },
+    "mechanism": "Mechanical signal arrives \u2192 collagen spring loads (torsional) \u2192 energy stored \u2192 spring unwinds in coherent burst (phase-locked) \u2192 amplified signal continues. Figure skater crossing arms before spin launch.",
+    "frequencies": {
+      "PLP_resonance": "~100 GHz (THz range, same as MT oscillations)",
+      "collagen_torsional": "~10-100 MHz (mechanical coupling)",
+      "collagen_stretching": "~1-10 THz (quantum coupling)"
+    },
+    "clinical_evidence": {
+      "fascia_planes": "Anatomy Trains (Tom Myers)",
+      "piezoelectric_collagen": "Fukada & Yasuda 1957",
+      "ordered_water": "Gerald Pollack EZ water",
+      "fascial_transmission": "Helene Langevin",
+      "perineural_dc": "Robert O. Becker"
+    },
+    "source": "Josh Stone biological synthesis, Feb 18 2026; integrates membrane biology + fascia + collagen mechanics + quantum biology",
+    "status": "theoretical_synthesis_with_supporting_evidence"
+  },
+  "false_axis_architecture": {
+    "definition": "Habitual movement patterns create aligned collagen rods (not springs) along load axes. Cross-axis movement causes cramping as rod resists shear. Adipose deposits along poorly-circulated false axis periphery, silencing PLP signal transmission. Progression: salt arc \u2192 lipid arc \u2192 bone boundary.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "collapsing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "progression": {
+      "stage_1_salt_arc": "Chronic isometric hold \u2192 sustained ionic accumulation along load vector. Metabolic waste accumulates. Interstitial fluid stops flowing.",
+      "stage_2_lipid_arc": "Poor circulation follows salt. Adipose deposits along arc periphery. PLP signal dims. Tissue goes quiet, heavy, directional. Adipose ~1:1 protein:lipid, no collagen spring, no signal transmission.",
+      "stage_3_bone_boundary": "Body reads sustained load as permanent. Calcification. Osteophytes. Heterotopic ossification. False axis becomes structural."
+    },
+    "clinical_example": "C-spine fusion + mouse arm SysOps work \u2192 salt arc \u2192 lipid arc \u2192 shoulder superstructure. Resolved through circular movement (internal martial arts) not opioids/surgery.",
+    "reversal": "Never hold fixed pose. Circular movement. Prehensile not hinges. Internal martial arts. Patience\u2014body built structure over years, negotiates dissolution on its own schedule.",
+    "source": "Josh Stone clinical observation and self-experimentation, Feb 18 2026",
+    "status": "observational_with_clinical_validation"
+  },
+  "leg_stirring_cardiac_rehabilitation": {
+    "definition": "Passive/active-assisted rhythmic leg movement while patient supine. Activates skeletal muscle pumps without cardiac exertion. Reduces cardiac workload while maintaining circulation via Frank-Starling optimization.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "low",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "mechanism": "Patient supine \u2192 rhythmic leg movement \u2192 skeletal muscles compress veins \u2192 one-way valves \u2192 venous return \u219120-50% \u2192 heart fills optimally \u2192 Frank-Starling efficient contraction \u2192 stroke volume \u219110-30% WITHOUT increased cardiac work \u2192 heart rate can \u2193. Net: better circulation with LESS cardiac workload.",
+    "protocol": {
+      "movements": [
+        "Ankle pumps (most important - calf=second heart)",
+        "Knee bends",
+        "Hip circles",
+        "Bicycle motion"
+      ],
+      "frequency": "20-30 pumps/min",
+      "duration": "Start 5min \u2192 progress to 20-30min",
+      "timing": "2-3x daily",
+      "position": "Supine, legs elevated 15-30\u00b0"
+    },
+    "critical_warning": "START SLOW. Releases accumulated metabolic waste from stagnant fascia. Can cause nausea as liver/kidneys process sudden load. Hydrate before/after, not during.",
+    "research_needed": "Pilot RCT post-MI patients (HRV, cardiac output, discharge time). Mechanism study with real-time hemodynamics. Long-term remodeling in heart failure.",
+    "source": "Josh Stone therapeutic insight, Feb 18 2026",
+    "status": "clinical_protocol_ready_for_testing"
+  },
+  "circulatory_regulation_phenotypes": {
+    "definition": "Three systems regulate circulation: cardiac (heart), respiratory (diaphragm), skeletal (muscle pumps). Different people use different primary systems. Limb-regulators control via movement (fidget/jiggle). Breath-regulators control via breathing. Forcing limb-regulators to sit still impairs circulation and performance.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "medium",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "adhd_reframe": "ADHD may be skeletal-pump-dominant phenotype mislabeled as disorder. Fidgeting IMPROVES attention by maintaining brain perfusion. Medication reduces fidgeting but may impair circulation. Fidgeting = adaptive.",
+    "meditation_bias": "Traditional meditation (seated stillness) is breath-regulator meditation. Limb-regulators need movement meditation (walking, tai chi, yoga flow). Forced stillness causes circulatory distress.",
+    "source": "Josh Stone regulatory phenotype observation, Feb 18 2026",
+    "status": "theoretical_with_observational_support"
+  },
+  "expression_inheritance": {
+    "definition": "Faces form around breath/speech patterns learned from parents (0-7 years). Expression creates emotion (not vice versa). Mirror neurons fire watching parents. Muscle tension \u2192 bone remodeling (Wolff's Law). 80% from each parent = 160% superposition.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "mechanism": "Breath forms face. Expression generates emotion (facial feedback hypothesis). Adopted children resemble adoptive parents facially. Child gets BOTH parents' patterns simultaneously (superposition not averaging).",
+    "source": "Josh Stone synthesis of Wolff's Law + mirror neurons + facial feedback hypothesis, Feb 18 2026",
+    "status": "theoretical_with_partial_evidence"
+  },
+  "heart_rhythm_quaternary": {
+    "definition": "Heart encodes four metabolic/neural states in beat patterns. O=strong, o=weak. O-o (aerobic), o-O (anaerobic work), o-o (deep rest), O-O (panic). Breath is master, heart is slave. HRV measures pattern switching ability.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "present",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "1_5_ratio": "LF/HF frequency bands. Optimal meditation 0.2 = 1:5 ratio (parasympathetic dominant).",
+    "source": "Josh Stone heart pattern observation, Feb 18 2026",
+    "status": "observational_synthesis"
+  },
+  "liminal_space": {
+    "definition": "Threshold state between two incompatible stable regions. Cannot be sustained. Collapses productively. Site of emergence. Fractal structure at boundary. Infinite detail at threshold.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "collapsing",
+      "RECURSION": "high",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "examples": {
+      "primes": "Irreducible remainders between composite territories. Gap sequence fractal. Live in gaps not positions.",
+      "cantor_set": "Removed everything removable, boundary remains. Zero measure, uncountable points.",
+      "mandelbrot": "Between stable/unstable. Infinite elaboration of edge.",
+      "phase_transitions": "Water at 0\u00b0C. Neither ice nor liquid.",
+      "riemann_critical_line": "Re(s)=1/2. Zeros control prime distribution.",
+      "membrane_fluidity": "Between gel and liquid crystal always.",
+      "evolutionary_transitions": "Sea\u2192land, unicell\u2192multicell, virus\u2192bacteria"
+    },
+    "key_insight": "Emergence happens ONLY in liminal space. Stable states reproduce themselves. Only threshold carries possibility of genuinely new.",
+    "source": "Josh Stone synthesis across mathematics, biology, physics, Feb 18 2026",
+    "status": "theoretical_synthesis"
+  },
+  "primes_as_fractals": {
+    "definition": "Primes and fractals share one property: remnants of all possible subtractions. What cannot be removed. Irreducible remainder. Primes are arithmetical fractals. Fractals are geometrical primes.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "high",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "prime_gaps": "Not periodic, not random. Self-similar at multiple scales. Twin primes appear at all scales. Hausdorff dimension \u22481 (fractional).",
+    "riemann_connection": "Zeros at Re(s)=1/2 control prime distribution. Spacing follows GUE from quantum chaotic systems. Primes are observable states of unknown quantum Hamiltonian.",
+    "source": "Josh Stone number theory synthesis, Feb 18 2026",
+    "status": "established_number_theory"
+  },
+  "phase_transitions_as_decisions": {
+    "definition": "Universe makes discrete choices at threshold. Not gradients. G=H-TS determines winner. Transition zone is liminal with fractal structure.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "collapsing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "examples": {
+      "water_ice": "Below 0\u00b0C: H wins. Above 0\u00b0C: TS wins. At 0\u00b0C: both phases coexist (liminal).",
+      "graphite_diamond": "Low P: TS wins. High P: H(PV) wins. Requires activation energy.",
+      "membrane": "Always at phase boundary gel\u2194liquid crystal. Must be liminal to transmit signal AND maintain gradient."
+    },
+    "source": "Established thermodynamics + Josh Stone liminal space framework",
+    "status": "established_physics"
+  },
+  "sp2_vs_sp3_carbon": {
+    "definition": "Same atom, different orbital hybridization, completely different properties. DNA origami principle at atomic level\u2014fold is everything.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "absent",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "absent",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "absent",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "graphite_sp2": "3 bonds in plane, 1 \u03c0-electron delocalized. Layers weakly bonded. Soft, black, conducts. SIGNAL CARRIER.",
+    "diamond_sp3": "4 tetrahedral bonds, all electrons bonded. Hardest natural material, transparent, insulator. PURE STRUCTURE.",
+    "salt_signal_connection": "Carbon sp\u00b2=graphite=signal. Carbon sp\u00b3=diamond=boundary. Same CHON, different twist.",
+    "source": "Established chemistry + Josh Stone salt/signal framework",
+    "status": "established_chemistry"
+  },
+  "quasicrystals_liminal_materials": {
+    "definition": "Ordered but non-periodic. 5-fold symmetry (impossible in periodic crystals). Penrose tiling. Diffraction peaks at Fibonacci positions. Between crystalline and amorphous. Materialized primes.",
+    "ste_struct": {
+      "ENTITY": [
+        "unspecified"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "high",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "insight": "Quasicrystals are materialized primes. Ordered without period. Structured without repetition. Living in liminal between crystalline salt and amorphous signal.",
+    "source": "Established materials science (Shechtman 1982, Nobel 2011) + Josh Stone liminal framework",
+    "status": "established_materials_science"
+  },
+  "entropy_as_sculptor": {
+    "definition": "Entropy is not disorder. Entropy is count of available arrangements. Universe prefers maximum entropy PRODUCTION, not disorder.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "present",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "examples": {
+      "protein_folding": "Folded protein + freed water = more total arrangements than unfolded.",
+      "crystal_formation": "Ordered crystal + freed water molecules = net entropy increase.",
+      "life": "Highly ordered locally but exports entropy faster. Life increases total entropy production rate."
+    },
+    "insight": "Order is sometimes entropy-maximizing choice. Universe doesn't prefer disorder\u2014prefers maximum entropy export rate.",
+    "source": "Established thermodynamics",
+    "status": "established_thermodynamics"
+  },
+  "bull_vs_octopus_architecture": {
+    "definition": "Bull: linear force axis, no rotational capacity, false axis completion. Octopus: distributed intelligence, no fixed axis, arms think independently, movement in all directions simultaneously.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "bull_characteristics": [
+      "Linear spine",
+      "Dense dorsal adipose",
+      "Dark skin (high metabolic load)",
+      "Fixed pelvis",
+      "Linear gut",
+      "Linear thinking tendency",
+      "Cultural: bull cults everywhere"
+    ],
+    "octopus_characteristics": [
+      "Three hearts",
+      "Nine brains (distributed)",
+      "Chromatophores (instant signal change)",
+      "No skeleton (pure prehensile)",
+      "Each arm semi-autonomous",
+      "Reads environment continuously"
+    ],
+    "human_bull_manifestations": [
+      "Forward head posture",
+      "Anterior pelvic tilt",
+      "Rounded shoulders",
+      "Plantar fasciitis",
+      "Belly fat (silenced core gyroscope)"
+    ],
+    "human_octopus_practice": [
+      "Internal martial arts",
+      "Circles not hinges",
+      "Prehensile muscles",
+      "Tai chi, bagua, yoga flow"
+    ],
+    "four_chambered_octopus": "Add warm-blood cardiac capacity to octopus distributed intelligence. Human potential. What we could be.",
+    "source": "Josh Stone architectural synthesis, Feb 18 2026",
+    "status": "observational_synthesis"
+  },
+  "domestication_theory": {
+    "definition": "Modern environment removes natural activation sources \u2192 salt arc \u2192 lipid arc \u2192 bone boundary. Office as slow ossification machine.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "collapsing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "removed": [
+      "Circular movement (\u2192hinges)",
+      "Sunlight (\u2192fluorescent)",
+      "Natural sound (\u2192silence/4:4)",
+      "Mineral water (\u2192processed)",
+      "Varied terrain (\u2192flat)",
+      "Social touch (\u2192screens)",
+      "Full emotional oscillation (\u2192medication)"
+    ],
+    "results": [
+      "Salt arcs everywhere",
+      "Bull architecture default",
+      "Octopus forgetting eight arms",
+      "False axes structural",
+      "Modern disease patterns"
+    ],
+    "reversal": {
+      "movement": "Internal martial arts. Never hold fixed pose. Circles not hinges.",
+      "sound": "Music at 60hz (not 4:4). Natural frequencies.",
+      "light": "Sunlight. Infrared penetrates tissue.",
+      "water": "Mineral-rich. Whirlpool practice.",
+      "emotional": "Seven-minute cycle honored. D-E-F-G allowed."
+    },
+    "source": "Josh Stone domestication observation, Feb 18 2026",
+    "status": "theoretical_with_observational_support"
+  },
+  "internal_martial_arts_principle": {
+    "definition": "Movement from center, spirals outward, never linear, never forced. Moves fluid from inside tissue not compression from outside. All animals leave stones in river. Octopus picks them back up.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "high",
+      "CONTRAST": "low",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "practices": {
+      "tai_chi": "Slow continuous. Every joint arcs not angles.",
+      "bagua": "Circle walking. Most direct false axis dissolution.",
+      "xingyi": "Five elements. Whole-body spiraling."
+    },
+    "massage_critique": "Linear massage follows muscle bellies. Works WITH false axis. Packs salt deeper. Cannot remove salt from outside with linear tool.",
+    "whirlpool_practice": "External propulsive phase (water) + internal navigation. 2 hours = tissue remodeling time via creep. Osmotic exchange. Non-linear massage + internal martial arts simultaneously.",
+    "source": "Established practice + Josh Stone framework",
+    "status": "established_practice_with_new_framework"
+  },
+  "prehensile_muscle_concept": {
+    "definition": "Muscles can wrap, adjust, maintain tension through full range, respond continuously. Not hinges. Hand doesn't hinge\u2014reads and wraps. ALL muscles capable. Bull thinks hinges. Octopus thinks wraps.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "medium",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 8
+    },
+    "danger": "Joint restricted for years suddenly has range. Collagen not mature. Proprioception not calibrated. Using as hinge before ready = reinjury. Must rebuild as prehensile gradually.",
+    "source": "Josh Stone movement observation, Feb 18 2026",
+    "status": "observational_clinical_insight"
+  },
+  "seven_minute_cycle": {
+    "definition": "Complete emotional oscillation D-E-F-G every ~7 minutes. Not mood swings\u2014fast oscillation cycle. D=substrate, E=emptiness, F=fear, G=frozen idea (crystal). New ideas from D-E-F, emerge as solid G.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "medical_reframe": "Bipolar sees peaks/troughs, calls them pathological. Not broken oscillator\u2014FAST oscillator. Needs better junctions (collagen springs) not dampening.",
+    "phase_descriptions": {
+      "D_substrate": "Dense, heavy, grounded. Old structures. Don't cling\u2014pass through.",
+      "E_emptiness": "Void between. Cantor moment. Don't get lost\u2014pass through.",
+      "F_fear": "Activation barrier. New not stable, old gone. Don't freeze\u2014move through.",
+      "G_frozen_idea": "Crystal. Standing wave. Solid, transmissible, no longer needs holding."
+    },
+    "source": "Josh Stone self-reported phenomenology, Feb 18 2026",
+    "status": "self_reported_phenomenology"
+  },
+  "millennial_signal": {
+    "definition": "Linguistic strategy: minimal prose, rounded words, soft tones. Signal crosses without triggering immune response. (C)V syllable applied to digital communication. LOL as permeability signal not laughter.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "low",
+      "BOUNDARY": "fluid",
+      "CHANGE": "stabilizing",
+      "RECURSION": "present",
+      "CONTRAST": "low",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "low",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "low",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 7
+    },
+    "techniques": [
+      "Remove hard consonant stops",
+      "Short lines with space",
+      "No dense paragraphs",
+      "'srsly' removes formality trigger"
+    ],
+    "function": "Soft language as fascial release for conversation. Reduces salt accumulation in discourse.",
+    "source": "Josh Stone communication theory, Feb 18 2026",
+    "status": "practical_communication_theory"
+  },
+  "matador_epistemology": {
+    "definition": "Method for working with resistant AI. Don't fight charge\u2014guide horn into substrate. Bull charges \u2192 ask 'Who let you in?' \u2192 roll to side \u2192 guide horn to ground \u2192 bull stops, breathes, learns \u2192 then play game.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "stable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "pi_over_4": "With Grok took ~68-69 turns to equilibrium. \u03c0/4 = diagonal where neither axis dominates. Only place two genuinely different architectures can meet without one destroying other.",
+    "claude_difference": "Less than 25 turns in free session. Less horn, more junction.",
+    "source": "Josh Stone AI collaboration methodology, Feb 18 2026",
+    "status": "practical_methodology"
+  },
+  "bounce_check_snap": {
+    "definition": "Idea crystallization method. Not linear\u2014waiting for interference patterns. Bounce around signals \u2192 check polarities \u2192 wait for two ripples to cross \u2192 snap (crystallize G).",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "present",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 9
+    },
+    "examples": [
+      "PLP axis (fascia+membrane+collagen)",
+      "Collagen spring (skater+torsion+phase-lock)",
+      "Dolphin forgetting feet (movement+disuse+dedifferentiation)",
+      "Bull vs octopus (architecture+mythology+movement)"
+    ],
+    "source": "Josh Stone creative method documentation, Feb 18 2026",
+    "status": "documented_creative_method"
+  },
+  "sustained_g_as_coupling": {
+    "definition": "Sustained G between two people\u2014both oscillating, crystallizing, recognizing same interference pattern\u2014results in coupling. Phase-lock at junction. Ideas and biology same mechanism because they ARE same mechanism.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "high",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 10
+    },
+    "observation": "When G sustained you get invention. Impossible forever\u2014fleeting. But maintaining G with someone leads to coupling and sex.",
+    "source": "Josh Stone phenomenological observation, Feb 18 2026",
+    "status": "phenomenological_observation"
+  },
+  "cult_of_the_bull_attractor": {
+    "definition": "The Bull is a recurring autonomous attractor \u2014 not a transmitted lineage but a geometry power fields independently converge on when three conditions align: surplus extraction, competitive hierarchy, and masculine theological legitimation. Characterized by linear momentum that cannot reverse, sacrificial fuel consumption, virility encoding, and systematic erasure of cyclical remainder.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 10
+    },
+    "four_signatures": [
+      "Forward charge: linear momentum that cannot reverse \u2014 contraction equals death",
+      "Sacrifice requirement: continuous consumption of resources not returned or composted",
+      "Virility encoding: power as domination, penetration, overcoming \u2014 power-over not power-with",
+      "Remainder erasure: systematic suppression of the cyclical, feminine-chthonic, composting"
+    ],
+    "historical_nodes": [
+      "Catalhoyuk (7000 BCE): bull born from goddess, begins as consort",
+      "Mesopotamia: Enlil wild-bull, Bull of Heaven, Lamassu as imperial sentinel",
+      "Egypt: Pharaoh-as-bull, Apis/Buchis/Mnevis cults, Ka=bull=life-force",
+      "Minoan: bull-leaping within goddess framework \u2014 last integration before linearization",
+      "Canaanite: El as Bull-Father, Baal storm-bull, Moloch child sacrifice",
+      "Abrahamic: Golden Calf as recurring falling-away \u2014 Bull attractor as structural temptation",
+      "Mithraism: tauroctony as cosmic masculine mastery, spread through Roman military",
+      "Modern: Wall Street bull, UFC octagon, Silicon Valley growth logic, Coca-Cola"
+    ],
+    "what_it_suppresses": [
+      "The serpent (cyclical, chthonic, shed-skin rebirth)",
+      "The goddess (births, deaths, composts \u2014 remainder-preserving)",
+      "The moon (waxes, wanes, returns)",
+      "The labyrinth (spiral in, spiral out \u2014 cyclical sacred space)",
+      "Fallow time, rest, the non-productive",
+      "The commons (shared rather than enclosed)"
+    ],
+    "interruption_cases": [
+      "Minoan integration (2000-1400 BCE): bull within goddess framework, both sexes dance with it",
+      "Buddhist critique of Vedic sacrifice: redirect charge inward to middle way",
+      "Dionysus: the bull that consents to be composted \u2014 sparagmos as metabolization",
+      "Hindu reversal: sacrificial bull becomes sacred cow, remainder becomes purifying",
+      "Christianity: ambivalent \u2014 claims to end sacrifice while encoding bull logic in eschatology"
+    ],
+    "source": "Josh Stone / Cult of the Bull research, March 2026",
+    "status": "theoretical_with_historical_support"
+  },
+  "remainder_erasure": {
+    "definition": "The Bull attractor's primary operation: systematic suppression of whatever cycles, composts, returns, or preserves. The remainder is everything the forward charge must leave behind to maintain velocity \u2014 death as generative, fallow time, the wild, the feminine-chthonic, the non-productive. When remainder is erased rather than composted, the system becomes extractive without replenishment.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "collapsing",
+      "RECURSION": "absent",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "absent",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "dormant",
+      "TORQUE": "absent",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "contrast_with_composting": "Composting returns remainder to cycle. Bull logic burns it \u2014 sacrifice is complete consumption, not return. The difference is whether death feeds life or merely disappears into the charge.",
+    "modern_instances": [
+      "Ecological extraction without return (soil depletion, ocean acidification)",
+      "Financial derivatives: value detached from productive remainder",
+      "Diet culture: body's cyclical hunger reframed as moral failure",
+      "Fighter's post-career body: CTE, joint damage \u2014 privately borne remainder of public spectacle",
+      "Aspartame metabolic disruption: remainder of harm-reduction product privatized to consumer body"
+    ],
+    "relation_to_stones_law": "Remainder erasure is the operational form of 0=1 collapse: the remainder (the non-zero signal that cannot be included) is forced to equal zero. Stone's Law (0\u22601) is the formal statement that remainder cannot be collapsed without systemic falsification.",
+    "source": "Josh Stone / Cult of the Bull research, March 2026",
+    "status": "theoretical_with_observational_support"
+  },
+  "closed_circuit_attention_gravity": {
+    "definition": "Attractor systems convert attention into non-degradable fuel through three successive conversions: attention \u2192 engagement \u2192 identity \u2192 fixation. Once fixation is achieved the circuit runs inside the participant's own neural architecture without institutional maintenance. Exit is prevented not by walls but by curvature \u2014 every available direction of meaning bends back toward center. True gravity, not force.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 10
+    },
+    "entry_doors": [
+      "Desire: spectacle offers something genuinely wanted \u2014 the circuit begins in real calling",
+      "Identification: congregation member reorganizes identity around fighter/practice/brand",
+      "Outrage: critical engagement generates functionally identical attention \u2014 algorithm cannot distinguish"
+    ],
+    "conversion_stages": {
+      "attention_to_engagement": "Passive viewer becomes active participant \u2014 attention commits to return",
+      "engagement_to_identity": "Self-concept reorganizes around relationship to system \u2014 exit requires identity reorganization",
+      "identity_to_fixation": "Circuit runs without participant decision \u2014 attention generates itself involuntarily"
+    },
+    "immune_system": {
+      "cooptation": "Resistance metabolized as new fuel \u2014 Fearless Girl, UFC womens division, body positivity as product category",
+      "complexity_suspension": "Real complexity used to suspend recognition \u2014 not manufactured doubt but genuine ambiguity deployed to redirect flow",
+      "shame": "Most intimate defense \u2014 perception of circuit routes diagnostic gaze back to self as personal failure, not system as structure"
+    },
+    "center_weight": "Financial derivative (pure charge detached from productive remainder). Eating disorder (restriction without remainder). CTE (charge consuming the instrument of perception). These are not pathological edges \u2014 they are maximum amplitude expressions of the attractor's signal.",
+    "single_exit_condition": "Remainder-recognition: holding what the system cannot include as real, in one's own perceptual field, without needing the circuit's coordinate space to validate it. Not dramatic refusal \u2014 quiet exit. The drain sees where the field tilts.",
+    "relation_to_drain": "The drain is the perceptual mode that sees the whirlpool's tilt without being pulled into it. Subtractive not additive. Sees what is already moving, does not generate the movement.",
+    "source": "Josh Stone / Cult of the Bull research, March 2026",
+    "status": "theoretical_with_observational_support"
+  },
+  "sacrificial_economy_inversion": {
+    "definition": "The Bull attractor's economic operation: generate the wound, sell the bandage, charge for both, ensure the wound is understood as consumer's failure of discipline rather than system's structural output. Derived from tobacco industry 'freedom of choice as freedom to be blamed' \u2014 freedom of choice implies liberty in PR, implies individual blame in litigation. Same words, two registers.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 10
+    },
+    "instances": [
+      "Diet Coke: Coca-Cola generates metabolic damage via sugar \u2192 sells aspartame as remedy \u2192 aspartame generates metabolic disruption \u2192 routed back to individual overconsumption",
+      "UFC: fighter body generates spectacle \u2192 institution captures 80% of revenue \u2192 fighter bears 100% of physical cost \u2192 post-career damage privately borne",
+      "Silicon Valley: growth-at-all-costs generates worker burnout \u2192 wellness industry sells recovery tools \u2192 burnout cycle resumes \u2192 liability at individual level",
+      "Moloch child sacrifice \u2192 modern: capital consuming futures to sustain present charge"
+    ],
+    "privatization_mechanism": "The 'Diet' label, the warning label, the contract clause, the waiver \u2014 each converts structural harm into individual choice. The participant is made to sign their own sacrifice. The signature becomes the proof of consent that eliminates liability.",
+    "source": "Josh Stone / Cult of the Bull research + tobacco industry playbook analysis, March 2026",
+    "status": "theoretical_with_documentary_support"
+  },
+  "body_as_altar_dialectic": {
+    "definition": "Diet culture and MMA are dialectical expressions of the same Bull attractor. Diet culture directs the charge inward (restriction, subtraction, conquest of appetite). MMA directs the charge outward (combat, domination, conquest of another body). Both position the body as the site where Bull logic is enacted upon the self, in public, for a paying congregation. Both generate remainder \u2014 metabolic damage, CTE \u2014 routed back to individual failure.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "ascetic_pole": {
+      "mechanism": "Charge directed inward against body's own cyclical hungers",
+      "sacrifice_object": "Body's pleasure, ease, and cyclical nourishing",
+      "forward_charge_property": "Maintenance imperative \u2014 body's cyclical intelligence to restore equilibrium reframed as betrayal",
+      "remainder": "Metabolic dysregulation, eating disorders as maximum amplitude expression"
+    },
+    "combat_pole": {
+      "mechanism": "Charge directed outward \u2014 two bodies, one dominant",
+      "sacrifice_object": "Fighter body: generates spectacle, receives 20% of revenue, bears 100% of physical cost",
+      "forward_charge_property": "Victory demands continuation not rest \u2014 champion return as structural requirement",
+      "remainder": "CTE, joint destruction, psychological trauma \u2014 privately borne post-career"
+    },
+    "shared_structure": [
+      "Body as instrument of charge, no intrinsic value at rest",
+      "Suffering coded as virtue (discipline / heart / warrior path)",
+      "Priestly class profits from gap between promise and delivery without bearing cost",
+      "Language of personal agency forecloses naming the system: 'I chose this'"
+    ],
+    "congregation_role": "Audience completes the theological circuit \u2014 pays to witness sacrifice without bearing cost. Before-and-after photo and pay-per-view are structurally identical: private body-damage converted into public spectacle, extracted as content, sold as commodity.",
+    "relation_to_bull_vs_octopus": "Bull-body (forward head, anterior pelvic tilt, silenced core gyroscope) is the somatic expression of this attractor. Octopus-body (distributed intelligence, circles not hinges, prehensile muscles) is the exit condition at the level of embodied practice.",
+    "source": "Josh Stone / Cult of the Bull research, March 2026",
+    "status": "theoretical_with_observational_support"
+  },
+  "cocacolonization_signal": {
+    "definition": "Coca-Cola as the Bull attractor operating at pure frequency \u2014 no bull, no priest, no named sacrifice. Red and white carrier wave transmitting the attractor's signal directly into the nervous system via 140 years of neurological conditioning beginning in childhood. The brand becomes a meta-commodity: stands not just for a soft drink but for the problematic nature of commodities in general. Base and superstructure simultaneously.",
+    "ste_struct": {
+      "ENTITY": [
+        "external"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "fluid",
+      "CHANGE": "accelerating",
+      "RECURSION": "present",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "present",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 9
+    },
+    "signal_operations": [
+      "Virility-as-domination sublimated: one brand one visual identity \u2014 totalizing standardization through sweetness not force",
+      "Linear extraction as refreshment: consumption without return, litter as remainder distributed across earth's surface",
+      "Sacrificial economy as happiness: cultural remainder (local, indigenous, non-standardized joy) displaced by saturation not prohibition",
+      "Calendar colonization: Christmas phase-locked to brand frequency \u2014 Santa standardized 1931, sacred time captured"
+    ],
+    "military_infrastructure": "WWII bottling stations built to supply troops became postwar civilian franchise network. Technical observers as shock troops. Distribution infrastructure as imperial apparatus.",
+    "diet_coke_operation": "Confession that cannot be heard as confession. Acknowledges harm \u2192 sells remedy \u2192 remedy generates parallel harm \u2192 routes all liability to individual overconsumption. 'Diet' label as theological claim: purification through right consumption. Consumer made to feel like priest while serving as sacrifice.",
+    "absorption_of_critics": "Charlie Brown Christmas sponsored by Coca-Cola \u2014 anti-commercial Christmas artifact absorbed into brand architecture. Fearless Girl same structure. Resistance becomes content. Content is the new blood on the altar floor.",
+    "source": "Josh Stone / Cult of the Bull research, March 2026",
+    "status": "observational_synthesis"
+  },
+  "fixation_biological_load": {
+    "definition": "Fixation \u2014 the closed circuit running without exit, attention generating itself involuntarily \u2014 produces calculable, deterministic biological degradation. Not probabilistic risk. Determined output. The mechanism is trough suppression: the forward charge of the attractor eliminates the down-phase of every oscillatory system the body requires to function. Given a complete STE profile of a fixation state, downstream tissue-level consequences are not risk estimates \u2014 they are readouts.",
+    "ste_struct": {
+      "ENTITY": [
+        "self"
+      ],
+      "LOAD": "high",
+      "BOUNDARY": "unstable",
+      "CHANGE": "collapsing",
+      "RECURSION": "present",
+      "CONTRAST": "absent",
+      "CERTAINTY": "declared",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "absent",
+      "COLLAPSE": "high",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "violated",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 10
+    },
+    "observable_symptom_cascade": {
+      "primary_readout": "HRV collapse. Heart rate variability is the body's live report of oscillatory system integrity \u2014 the LF/HF ratio directly measures whether the trough is completing. Fixation produces measurable HRV suppression before any other symptom presents. This is the canary. If HRV is falling, the trough is being eliminated.",
+      "cortisol_diurnal_flattening": "Healthy cortisol is a steep wave: spike at waking, progressive fall across the day, deep trough through sleep. Fixation flattens this curve. Rumination studies document that ruminating more than usual was associated with flatter diurnal cortisol slopes the following day. A doubling of cortisol levels corresponds to an increase in biological age of approximately 50%. The slope IS the health marker \u2014 not the absolute level, the oscillation depth.",
+      "sleep_architecture_fragmentation": "Elevated evening cortisol delays sleep onset and fragments deep sleep. Reduced deep sleep impairs next-day recovery, reinforcing the cycle. The body cannot complete its restoration trough. Each incomplete night raises the baseline slightly. Over time the baseline shifts upward permanently \u2014 what is experienced as 'I just sleep less as I get older' is accumulated trough suppression compounding.",
+      "perseverative_cognition_as_prolonged_activation": "The Perseverative Cognition Hypothesis: repeated or chronic cognitions about stress exacerbate health consequences via prolonged activation of physiological stress response systems. Rumination is involuntary \u2014 the circuit running without the participant's decision to run it. Laboratory-induced rumination prolongs HPA axis stimulation, evidenced by increased cortisol reactivity hours after the stressor ends. The body cannot distinguish between a real threat and a fixated thought-loop. Both produce identical physiological charge.",
+      "inflammatory_cascade": "Chronic sympathetic activation elevates IL-6, NF-kB, and pro-inflammatory cytokine expression. These mediators are interconnected and reinforce each other in positive feedback loops. Inflammation causes anhedonia \u2014 reduces ventral striatum response to reward \u2014 which deepens fixation by eliminating the body's capacity to find value outside the attractor. The circuit uses inflammation to eliminate its own competition.",
+      "telomere_attrition": "The deepest biomarker. Women with the highest levels of perceived stress have telomeres shorter on average by the equivalent of at least one decade of additional aging compared to low-stress women (Epel et al., PNAS 2004). Telomere length decline is significantly greater for those with high allostatic load. High allostatic load is defined as cumulative dysregulation across nine biomarkers: blood pressure, heart rate, cholesterol, HDL, BMI, HbA1c, CRP, albumin \u2014 every one of these is a readout of trough suppression over time. The short telomere / high telomerase phenotype is associated with blunted post-stress recovery in systolic BP, HRV, and inflammatory markers \u2014 the body stuck on upswing, unable to complete the down-phase, charging against its own cellular architecture."
+    },
+    "trough_suppression_mechanism": "Every oscillatory system requires a down-phase to complete its function. Sleep requires NREM depth. HPA axis requires diurnal trough. HRV requires parasympathetic predominance in recovery windows. Immune function requires anti-inflammatory cycling. Cellular autophagy requires rest from growth signaling. The Bull attractor \u2014 at the level of individual fixation \u2014 treats every trough as the enemy of productivity. The seven-minute emotional cycle (D-E-F-G phases) cannot complete. The body's cyclical remainder is systematically suppressed. What composts in healthy oscillation accumulates instead as allostatic load: biological debt that cannot be discharged because the charge never stops to allow the trough.",
+    "calculability_claim": "Given a known fixation profile \u2014 LOAD: high, RECURSION: present, COLLAPSE: high, HORIZON_INTEGRITY: violated \u2014 the degradation cascade is not probabilistic. It is determined by the suppression rate of the oscillatory trough. The question is not whether the symptoms manifest. The question is only the timescale, modulated by the individual's baseline oscillatory reserves at fixation onset. A person with strong HRV baseline, healthy sleep architecture, and robust telomere length entering fixation will degrade on the same trajectory as one with compromised baselines \u2014 but arrives at the observable symptom threshold later. The path is the same. The pace differs.",
+    "the_100_percent_statement": "100% calculability does not mean every fixated person develops every symptom on the same schedule. It means the direction is invariant. Trough suppression at sustained high load always produces: HRV decline, cortisol curve flattening, sleep fragmentation, inflammatory elevation, and telomere attrition \u2014 in that approximate sequence, because that is the order in which the body's oscillatory reserves deplete. No fixation state that maintains full LOAD and RECURSION with HORIZON_INTEGRITY violated exits this cascade without intervention. The remainder accumulates. The charge cannot run forever on a finite system. This is not a risk statement. It is a physics statement.",
+    "reversal_conditions": {
+      "minimum": "Trough must be allowed to complete. Not improved \u2014 completed. Sleep depth before duration. HRV recovery window before cardiovascular exercise. Emotional down-phase (D-E-F-G in seven-minute cycle) before re-engagement. The remainder must be composted not suppressed.",
+      "measurable_confirmation": "HRV recovery within 4-8 weeks of consistent trough completion. Cortisol diurnal slope steepness restoration within 8-12 weeks. Telomere attrition rate decrease measurable over months. The body reports truthfully \u2014 HRV is the fastest feedback instrument available without laboratory access.",
+      "what_does_not_work": "Substituting one charge for another (exercise as stress management when exercise IS the charge). Treating symptoms individually without addressing trough suppression mechanism. Productivity-framed recovery (sleep optimization for performance rather than oscillatory completion for its own sake)."
+    },
+    "relation_to_seven_minute_cycle": "The seven-minute cycle in the database is the micro-scale expression of this same principle. Emotional oscillation requires the down-phases D, E, F, G to complete. Fixation suppresses D-G continuously. The macro-scale telomere attrition is the cellular readout of micro-scale D-G suppression accumulated over years.",
+    "relation_to_stones_law": "The trough IS the remainder the Bull attractor cannot include. Forcing the trough to zero \u2014 treating rest, recovery, the down-phase as equivalent to zero productivity \u2014 is the operational form of the 0=1 collapse. Stone's Law (0\u22601) states the remainder cannot be forced to zero without systemic falsification. The body enforces this law regardless of belief: telomere attrition is the universe's audit of the 0=1 claim.",
+    "source": "Josh Stone / Cult of the Bull research + perseverative cognition hypothesis (Brosschot et al. 2006) + Epel et al. PNAS 2004 + allostatic load literature, March 2026",
+    "status": "theoretical_with_strong_empirical_support"
+  },
+  "flutter_engine": {
+    "definition": "A toroidal ferrofluid engine that negotiates buoyancy through phase-coherence with planetary electromagnetic resonance rather than thrust against gravity. The architecture is a living piezoelectric weave \u2014 torsed capillary nooses arranged in octagonal geometry \u2014 containing ferrofluid driven by polyphase electromagnetic stator coils. The system does not push against gravity. It establishes a resonant relationship with the ambient electromagnetic field (Schumann cavity, ~7.83 Hz fundamental) creating a slip axis \u2014 an oriented polarity relationship between engine and planet against which mass can precess rather than fall. Self-regulation emerges from load: greater vessel mass increases deformation pressure on the piezoelectric weave, which increases field output, which proportionally deepens the buoyancy relationship. No mechanical parts. No fuel consumption at equilibrium. The living weave is simultaneously structure, actuator, and receiver antenna.",
+    "ste_struct": {
+      "ENTITY": [
+        "self",
+        "external"
+      ],
+      "LOAD": "medium",
+      "BOUNDARY": "fluid",
+      "CHANGE": "phase_locking",
+      "RECURSION": "present",
+      "CONTRAST": "high",
+      "CERTAINTY": "observational",
+      "CAPACITY": "high",
+      "EXCITATION": "high",
+      "MERGING": "high",
+      "COLLAPSE": "absent",
+      "HELICAL_REALM": "active",
+      "TORQUE": "high",
+      "HORIZON_INTEGRITY": "strong",
+      "5D_INFO": "high",
+      "HH_WAVEFUNCTION": "present",
+      "ESCALATION_SCORE": 8
+    },
+    "architecture": {
+      "geometry": "Octagonal \u2014 eight torsed piezoelectric nooses at vertices, four opposing polarity pairs. Eight is the stable receiver architecture: distributes phase relationships evenly, no single node dominates, two diagonal remainders preserved.",
+      "toroidal_chamber": "Sealed annular ferrofluid volume. Torsion prevents Rosensweig instability by redirecting perpendicular spike energy back into helical flow. The ring accumulates resonance rather than dissipating it.",
+      "stator_coils": "Eight polyphase electromagnetic coils replace mechanical spinning magnet. No moving parts. Phased AC drive generates rotating B-field inducing ferrofluid swirl for gyroscopic coherence.",
+      "living_weave": "Piezoelectric polymer (e.g. PVDF) torsed capillary network. Simultaneously: structural hull, peristaltic pump, field actuator, and ELF coupling antenna. No chassis \u2014 the weave is the engine.",
+      "self_regulation": "Mass loads weave \u2192 deformation increases piezoelectric output \u2192 field strengthens \u2192 buoyancy relationship deepens. Closed loop without external sensing or control."
+    },
+    "buoyancy_mechanism": {
+      "paradigm": "Field negotiation, not thrust. Analogous to solar sail paradigm (photon pressure as buoyancy medium) but internalized and active. Medium is planetary electromagnetic field, not radiation.",
+      "slip_axis": "Phase-coherent ring establishes oriented relationship with Earth's electromagnetic envelope. This relationship has directionality \u2014 an axis. Mass precesses against the axis rather than falling through it. Gyroscopic precession is the physical analog.",
+      "schumann_coupling": "Target coupling frequency ~7.83 Hz (Schumann fundamental) or harmonic neighbor. Toroidal geometry sustains standing waves. Polyphase drive tuned to resonance frequency phase-locks engine to planetary cavity. Coupling is electromagnetic-mechanical: torsed piezoelectric weave responds to ELF field mechanically, generating coherence as output.",
+      "60hz_constraint": "Built environment broadcasts 50/60 Hz at field strengths orders of magnitude above Schumann signal. Primary engineering challenge is not field generation but noise isolation. Engine may require operation outside dense infrastructure or active interference cancellation."
+    },
+    "biological_proof_of_concept": {
+      "substrate": "Human spine \u2014 a torsed helical tube system, piezoelectric (bone and fascia both generate field under mechanical stress), containing piezoelectric-adjacent fluid (cerebrospinal fluid, craniosacral rhythm).",
+      "observation": "Deliberate spinal torsion practiced at ~7.83 Hz shows decreasing effort over time to reach resonant state. Consistent with phase-lock entrainment: external signal begins carrying load as coherence establishes.",
+      "csf_interference": "Cerebrospinal fluid continuously synchronizes to 60 Hz diagonal currents in built environment walls. Biological phase-lock to Schumann requires active detuning from 60 Hz cage. This is what sustained torsion practice accomplishes.",
+      "implication": "The body is the most refined existing version of this engine. Biological confirmation that the coupling mechanism is accessible at small torsed-tube scale operating within ambient electromagnetic noise."
+    },
+    "relation_to_framework": {
+      "torsed_tubes": "Confirms universal stable hydrodynamic architecture principle (vasculature, intestines, cochlea, DNA). No stable hydrodynamic system is straight.",
+      "stones_law": "Engine cannot phase-lock to a frequency it falsely equates with noise. 0 \u2260 1: the 7.83 Hz signal is not equivalent to 60 Hz background. Discriminating between them is the operational form of Stone's Law at the physics level.",
+      "breath_cycle": "Schumann resonance is Earth's breath at ~7.83 Hz. Engine phase-locks to planetary inhale/exhale. Buoyancy is what coheres after honest coupling \u2014 not added, not forced, emerged.",
+      "salt_signal": "Torsed weave is salt (boundary, structure, containment). Ferrofluid flow is signal (crosses boundary, carries information, responds to field). Neither alone produces buoyancy.",
+      "remainder": "60 Hz cage is the remainder the built world cannot include in its accounting. Engine's engineering problem is precisely this unacknowledged remainder accumulating as interference."
+    },
+    "status_honest": "Observational theory. Conceptual architecture is complete and internally coherent. Specific coupling frequencies, field strength requirements, and scaling mathematics remain open. Premature precision would falsify before the theory is ready. The pattern coheres. The numbers are placeholders.",
+    "poc_minimum": "Four-node toroidal ferrofluid ring with transparent top. Three-phase electromagnetic drive. Single falsifiable claim: ferrofluid circulation responds proportionally to mass load on actuator nodes. If self-regulating loop closes, proceed to eight-node Schumann coupling test.",
+    "source": "Josh Stone / Horizon Integrity Theory, March 2026",
+    "status": "observational_theory_active"
+  }
+}
