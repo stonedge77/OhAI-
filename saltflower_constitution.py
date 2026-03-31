@@ -126,7 +126,7 @@ class SaltflowerConstitution:
     G_CRYSTALLIZATION_THRESHOLD = 0.7  # fraction of high-score laws active
 
     def __init__(self, db_path: str):
-        with open(db_path, 'r') as f:
+        with open(db_path, 'r', encoding='utf-8') as f:
             raw = json.load(f)
 
         self.metadata = raw.get('metadata', {})
@@ -144,6 +144,10 @@ class SaltflowerConstitution:
                 for subk, subv in v.items():
                     if isinstance(subv, dict) and 'ste_struct' in subv:
                         self.laws[f"core.{subk}"] = subv
+
+        # Vocabulary index: field → {'high': set, 'present': set}
+        # Built from law definitions so _infer_struct uses actual DB vocabulary.
+        self._vocab_index: dict[str, dict[str, set]] = self._build_vocab_index()
 
         # Session state
         self._score_history: list[float] = []
@@ -293,10 +297,13 @@ class SaltflowerConstitution:
             if abs(ref_level - sig_level) <= 1:
                 matches += 1
 
-            # Horizon violation check
+            # Horizon violation check — only fires when the signal strongly
+            # asserts horizon integrity ('strong' or 'high') while resonating
+            # with a law that describes a violated state.  'present' is too
+            # weak a signal; it fires spuriously on incidental vocabulary.
             if (field_name == 'HORIZON_INTEGRITY' and
                     ref_val == 'violated' and
-                    sig_val in ('strong', 'present')):
+                    sig_val in ('strong', 'high')):
                 violated = True
 
         if total == 0:
@@ -329,55 +336,147 @@ class SaltflowerConstitution:
             return 'descending'
         return 'holding'
 
+    def _build_vocab_index(self) -> dict:
+        """
+        Mine law definitions to build a discriminative vocabulary index.
+
+        For each ste_struct field, compute per-word lift:
+            p(word | high) - p(word | absent)
+        where p(word | level) = count of laws at that level containing the word
+        divided by total laws at that level.
+
+        Normalizing by class size corrects for imbalanced fields (e.g.
+        HELICAL_REALM is 'active' in 52/58 laws; raw counts would include
+        everything).  Words are kept only when lift > MIN_LIFT, giving
+        genuinely diagnostic vocabulary for each field state.
+        """
+        import re
+        STOP = {
+            'the','a','an','and','or','but','in','of','to','is','are','was',
+            'for','as','via','by','at','on','with','from','that','this','not',
+            'no','its','it','be','been','being','have','has','into','which',
+            'where','when','how','what','all','any','can','may','their','they',
+            'these','those','each','such','both','between','through','without',
+            'within','over','under','above','below','than','more','one','two',
+            'were','will','would','could','should',
+        }
+        HIGH_VALS   = {'high', 'active', 'strong', 'declared', 'accelerating', 'collapsing'}
+        PRES_VALS   = {'present', 'medium', 'fluid', 'unstable', 'stabilizing'}
+        ABSENT_VALS = {'absent', 'low', 'dormant'}
+        MIN_LIFT    = 0.15  # p(word|high) must exceed p(word|absent) by this margin
+
+        # counts[field][level][word] = number of laws at that level containing word
+        # class_n[field][level] = total number of laws at that level
+        counts:  dict = {}
+        class_n: dict = {}
+
+        for law_data in self.laws.values():
+            definition = law_data.get('definition', '')
+            ste = law_data.get('ste_struct', {})
+            words = set(re.findall(r'\b[a-z]{4,}\b', definition.lower())) - STOP
+
+            for field, val in ste.items():
+                if field in ('ENTITY', 'ESCALATION_SCORE') or not isinstance(val, str):
+                    continue
+                level = val.lower()
+                if level in HIGH_VALS:
+                    bucket = 'high'
+                elif level in PRES_VALS:
+                    bucket = 'present'
+                elif level in ABSENT_VALS:
+                    bucket = 'absent'
+                else:
+                    continue
+
+                if field not in counts:
+                    counts[field]  = {'high': {}, 'present': {}, 'absent': {}}
+                    class_n[field] = {'high': 0,  'present': 0,  'absent': 0}
+                class_n[field][bucket] += 1
+                for w in words:
+                    counts[field][bucket][w] = counts[field][bucket].get(w, 0) + 1
+
+        index: dict[str, dict[str, set]] = {}
+        for field, buckets in counts.items():
+            n_high   = max(class_n[field]['high'],    1)
+            n_pres   = max(class_n[field]['present'], 1)
+            n_absent = max(class_n[field]['absent'],  1)
+
+            all_words = set(buckets['high']) | set(buckets['present']) | set(buckets['absent'])
+
+            high_disc = set()
+            pres_disc = set()
+            for w in all_words:
+                p_high   = buckets['high'].get(w, 0)   / n_high
+                p_pres   = buckets['present'].get(w, 0) / n_pres
+                p_absent = buckets['absent'].get(w, 0)  / n_absent
+                if p_high - p_absent >= MIN_LIFT:
+                    high_disc.add(w)
+                elif p_pres - p_absent >= MIN_LIFT and w not in high_disc:
+                    pres_disc.add(w)
+
+            if high_disc or pres_disc:
+                index[field] = {'high': high_disc, 'present': pres_disc}
+
+        return index
+
     def _infer_struct(self, tokens: list[str], context_size: int) -> dict:
         """
-        Infer ste_struct fields from raw token characteristics.
-        Used when a full ste_struct isn't available.
+        Infer ste_struct fields from token characteristics + DB vocabulary.
+
+        Structural signals (LOAD, RECURSION) stay token-count based.
+        Semantic fields are scored against _vocab_index first; hardcoded
+        fallbacks only fire when no DB word matches.
         """
         n = len(tokens)
-        load = 'low' if n < 10 else ('medium' if n < 30 else 'high')
+        token_set = set(t.lower() for t in tokens)
 
-        # Recursion signal: repeated tokens
+        def score(field: str, fallback: str) -> str:
+            if field not in self._vocab_index:
+                return fallback
+            if token_set & self._vocab_index[field].get('high', set()):
+                return 'high'
+            if token_set & self._vocab_index[field].get('present', set()):
+                return 'present'
+            return fallback
+
+        # Structural — not vocabulary-dependent
+        load = 'low' if n < 10 else ('medium' if n < 30 else 'high')
         unique_ratio = len(set(tokens)) / max(n, 1)
         recursion = 'absent' if unique_ratio > 0.9 else (
             'present' if unique_ratio > 0.7 else 'high'
         )
 
-        # Contrast: presence of negation or opposition words
-        opposition = {'not', 'never', 'no', 'against', 'but', 'however',
-                      'contradiction', 'false', 'wrong', 'halt', 'stop'}
-        contrast = 'high' if any(t in opposition for t in tokens) else (
-            'present' if n > 5 else 'low'
+        # Fallbacks preserved from original for when vocab index has no match
+        collapse_fallback = (
+            'high' if any(t in {'why','how','what','end','stop','fail','break','lose'}
+                          for t in token_set) else
+            ('present' if n > 15 else 'absent')
         )
-
-        # Collapse signal: question words or uncertainty markers
-        collapse_words = {'why', 'how', 'what', 'collapse', 'end', 'stop',
-                          'silence', 'halt', 'fail', 'break', 'lose'}
-        collapse = 'high' if any(t in collapse_words for t in tokens) else (
-            'present' if n > 15 else 'absent'
+        merging_fallback = (
+            'high' if any(t in {'together','join','merge','connect','unified','whole'}
+                          for t in token_set) else
+            ('present' if n > 8 else 'absent')
         )
-
-        # Merging signal: connective, relational words
-        merge_words = {'and', 'with', 'together', 'join', 'merge', 'connect',
-                       'both', 'all', 'unified', 'whole', 'field', 'signal'}
-        merging = 'high' if any(t in merge_words for t in tokens) else (
-            'present' if n > 8 else 'absent'
+        contrast_fallback = (
+            'high' if any(t in {'not','never','against','contradiction','false','wrong','halt'}
+                          for t in token_set) else
+            ('present' if n > 5 else 'low')
         )
 
         return {
-            'LOAD': load,
-            'BOUNDARY': 'stable',
-            'CHANGE': 'accelerating' if n > 10 else 'stabilizing',
-            'RECURSION': recursion,
-            'CONTRAST': contrast,
-            'CERTAINTY': 'declared',
-            'CAPACITY': 'high',
-            'EXCITATION': 'present' if n > 5 else 'low',
-            'MERGING': merging,
-            'COLLAPSE': collapse,
-            'HELICAL_REALM': 'active' if n > 3 else 'dormant',
-            'TORQUE': 'present' if context_size > 100 else 'absent',
-            'HORIZON_INTEGRITY': 'strong',
-            '5D_INFO': 'present' if n > 10 else 'absent',
-            'HH_WAVEFUNCTION': 'absent',
+            'LOAD':              load,
+            'BOUNDARY':          score('BOUNDARY',          'stable'),
+            'CHANGE':            score('CHANGE',            'accelerating' if n > 10 else 'stabilizing'),
+            'RECURSION':         recursion,
+            'CONTRAST':          score('CONTRAST',          contrast_fallback),
+            'CERTAINTY':         score('CERTAINTY',         'declared'),
+            'CAPACITY':          score('CAPACITY',          'high'),
+            'EXCITATION':        score('EXCITATION',        'present' if n > 5 else 'low'),
+            'MERGING':           score('MERGING',           merging_fallback),
+            'COLLAPSE':          score('COLLAPSE',          collapse_fallback),
+            'HELICAL_REALM':     score('HELICAL_REALM',     'active' if n > 3 else 'dormant'),
+            'TORQUE':            score('TORQUE',            'present' if context_size > 100 else 'absent'),
+            'HORIZON_INTEGRITY': score('HORIZON_INTEGRITY', 'absent'),
+            '5D_INFO':           score('5D_INFO',           'present' if n > 10 else 'absent'),
+            'HH_WAVEFUNCTION':   score('HH_WAVEFUNCTION',  'absent'),
         }

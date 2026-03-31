@@ -26,6 +26,7 @@ import threading
 import urllib.request
 import urllib.parse
 import html
+from pathlib import Path
 from typing import Optional
 
 # ── ANSI ─────────────────────────────────────────────────
@@ -383,40 +384,103 @@ def _form_question(
     Article 5: dance — velocity aligned, not thrust.
     No answers. No framing. One question.
     """
-    n = sorted(nouns)
-    v = sorted(verbs)
-    c = sorted(cancelled)
-    m = sorted(motion)
-    d = sorted(diagonal)
+    import random
 
-    # Priority: what survived AND across all 7 sources
-    if d:
-        core = ' and '.join(d[:3])
+    # Sort by length descending — longer words are more specific, less noise.
+    # The remainder is singular. NAND reduces to one irreducible signal, not a list.
+    n = sorted(nouns,    key=len, reverse=True)
+    v = sorted(verbs,    key=len, reverse=True)
+    c = sorted(cancelled, key=len, reverse=True)
+    m = sorted(motion,   key=len, reverse=True)
+    d = sorted(diagonal, key=len, reverse=True)
+
+    # Detect oracle noise: navigation index artifacts are short, alphabetically
+    # clustered, or clearly non-semantic. If the best nouns we have are noise,
+    # fall through to carry rather than building a question from them.
+    def _is_noise(words: list) -> bool:
+        if not words:
+            return True
+        # All words very short → likely navigation index (abc, act, air...)
+        if all(len(w) <= 4 for w in words):
+            return True
+        if len(words) >= 2:
+            first_letters = [w[0] for w in words]
+            # More than half share the same first letter → alphabetical crawl
+            most_common = max(set(first_letters), key=first_letters.count)
+            if first_letters.count(most_common) > len(words) / 2:
+                return True
+            # Sequential first letters across all 3+ words → index page (a,b,c or d,e,f)
+            if len(words) >= 3:
+                codes = sorted(set(ord(c) for c in first_letters))
+                if len(codes) >= 3:
+                    runs = sum(1 for i in range(len(codes) - 1) if codes[i+1] - codes[i] == 1)
+                    if runs >= len(codes) - 1:  # fully consecutive alphabet run
+                        return True
+        return False
+
+    # Priority: the diagonal — what survived AND across all 7 sources.
+    # NAND reduces to one irreducible remainder. The question carries one noun.
+    # There can be only 1 remainder. Joining three nouns with 'and' is addition.
+    if d and not _is_noise(d[:1]):
+        remainder = d[0]
         if m:
             gradient = m[0]
-            return f"if {core} {gradient}s — what is the boundary that holds?"
+            templates = [
+                f"if {remainder} {gradient}s — what is the boundary that holds?",
+                f"where does {remainder} end and what {gradient}ing creates begin?",
+                f"{remainder} is {gradient}ing — was it called, or did it find its way here?",
+            ]
+            return random.choice(templates)
         elif v:
-            return f"what does {core} hold that {v[0]}ing cannot reach?"
+            verb = v[0]
+            templates = [
+                f"what does {remainder} hold that {verb}ing cannot reach?",
+                f"what would {remainder} ask that {verb}ing cannot answer?",
+                f"does {verb}ing use {remainder}, or does {verb}ing unmake it?",
+            ]
+            return random.choice(templates)
         else:
-            return f"what remains when {core} subtracts against itself?"
+            templates = [
+                f"what remains when {remainder} subtracts against itself?",
+                f"what is {remainder} before it arrives here?",
+                f"where does {remainder} go when it is no longer needed?",
+            ]
+            return random.choice(templates)
 
-    # What the human named that nothing else named
-    if c and n:
+    # What the human named that nothing else named — one cancelled, one surviving
+    if c and n and not _is_noise(c[:1]) and not _is_noise(n[:1]):
         named = c[0]
-        surviving = n[0] if n else 'this'
-        return f"you named {named} — but only {surviving} survived. what did {named} contain that you didn't say?"
+        surviving = n[0]
+        templates = [
+            f"you named {named} — but only {surviving} survived. what did {named} contain that you didn't say?",
+            f"{named} did not survive. {surviving} did. what was the difference?",
+        ]
+        return random.choice(templates)
 
-    # Pure noun residue
-    if n and v:
-        return f"does {' or '.join(n[:2])} {v[0]}, or does {v[0]}ing produce {n[0]}?"
-
-    if n:
-        return f"what is {' and '.join(n[:3])} before it is named?"
+    # Pure noun residue — one remainder
+    if n and not _is_noise(n[:1]):
+        remainder = n[0]
+        if v:
+            templates = [
+                f"what does {remainder} hold that {v[0]}ing cannot reach?",
+                f"what did {v[0]}ing take from {remainder} that it did not return?",
+            ]
+            return random.choice(templates)
+        templates = [
+            f"what is {remainder} before it is named?",
+            f"what is trying to form here that {remainder} cannot yet hold?",
+            f"is {remainder} moving toward something, or was it already here?",
+        ]
+        return random.choice(templates)
 
     if carry:
         # Fall back to carry from last session
         carry_words = carry.split()[:3]
-        return f"the last field held {' '.join(carry_words)} — is that still the boundary, or has it moved?"
+        templates = [
+            f"the last field held {' '.join(carry_words)} — is that still the boundary, or has it moved?",
+            f"what was carrying {' '.join(carry_words)} before this arrived?",
+        ]
+        return random.choice(templates)
 
     # Silence — nothing survived
     return "∅"
@@ -489,7 +553,7 @@ def print_question(q: str):
 
 # ── SESSION ───────────────────────────────────────────────
 class Session:
-    def __init__(self):
+    def __init__(self, db_path: Optional[str] = None):
         self.carry: Optional[str] = None
         self.session_nouns: Optional[set] = None  # accumulated AND
         self.exchange = 0
@@ -500,6 +564,82 @@ class Session:
         # Spine nodes that get matched by an oracle exit the spine.
         self.spine_nouns: set = set()
         self.spine_verbs: set = set()
+
+        # Constitution + carry circuit — loaded when db_path is available.
+        # Required by ohai_server.py; gracefully absent in CLI mode.
+        try:
+            from saltflower_constitution import SaltflowerConstitution
+            from remainder import CarryCircuit
+            if db_path is None:
+                _here = Path(__file__).parent
+                _candidate = _here / "emergent_laws_db_merged.json"
+                db_path = str(_candidate) if _candidate.exists() else None
+            if db_path:
+                self._constitution = SaltflowerConstitution(db_path)
+                self._circuit = CarryCircuit()
+        except Exception:
+            pass
+
+        # Emergent lessons — incomplete thoughts held between sessions.
+        # Nouns with signal but without observed polarity yet.
+        # When incoming tokens resonate with a lesson's signal word,
+        # the lesson surfaces for consideration. It does not score the
+        # constitution — it waits.
+        self._lessons: dict = {}
+        try:
+            _here = Path(__file__).parent
+            _lessons_path = _here / "emergent_lessons.json"
+            if _lessons_path.exists():
+                import json as _json
+                _raw = _json.loads(_lessons_path.read_text(encoding='utf-8'))
+                self._lessons = {
+                    k: v for k, v in _raw.items()
+                    if k != '_meta' and isinstance(v, dict) and 'signal' in v
+                }
+        except Exception:
+            pass
+
+        # Session-level oracle noise tracker.
+        # Words that recur in oracle results across many breaths are
+        # structural search-engine noise (country lists, nav menus,
+        # alphabetical indexes). Suppress once they've appeared >= threshold.
+        self._oracle_freq: dict[str, int] = {}
+        self._oracle_noise_threshold = 4  # appearances across breaths before suppression
+        self._law_freq: dict[str, int] = {}   # how many times each law has resonated
+
+    def spine_arc(self) -> dict:
+        return {
+            "nouns": sorted(self.spine_nouns),
+            "verbs": sorted(self.spine_verbs),
+            "exchange": self.exchange,
+            "carry": self.carry or "",
+            # Top resonating laws this session — learning signal
+            "law_freq": sorted(
+                self._law_freq.items(), key=lambda x: x[1], reverse=True
+            )[:8] if hasattr(self, '_law_freq') else [],
+        }
+
+    def check_lessons(self, tokens: list[str]) -> list[dict]:
+        """
+        Check if any incoming tokens resonate with a stored lesson's signal word.
+        Returns list of lessons that have found partial resonance — not resolved,
+        just surfaced. The polarity is still needed.
+        """
+        if not self._lessons:
+            return []
+        token_set = set(t.lower() for t in tokens)
+        surfaced = []
+        for name, lesson in self._lessons.items():
+            signal = lesson.get('signal', '').lower()
+            if not signal:
+                continue
+            # Direct hit or root resonance (signal is prefix of a token)
+            if signal in token_set or any(
+                len(signal) >= 4 and t.startswith(signal)
+                for t in token_set
+            ):
+                surfaced.append({'name': name, **lesson})
+        return surfaced
 
     def breathe(self, raw: str) -> str:
         self.exchange += 1
@@ -531,9 +671,19 @@ class Session:
 
         print_ste(conducted_nouns, conducted_verbs)
 
-        # Build query signal — spine-conducted nouns lead
+        # Build query signal — gradient-shaped phrase, not a flat keyword dump.
+        # Search engines return index pages for keyword bags; they return semantic
+        # content for phrase queries. The verb is the gradient: it orients the noun.
+        # Longest nouns first — longer words are more specific, less likely to be
+        # stop words or index entries.
         spine_first = list(self.spine_nouns) + [n for n in signal_nouns if n not in self.spine_nouns]
-        query_terms = spine_first[:5] if spine_first else list(conducted_verbs)[:3]
+        # Sort by length descending — specific before general
+        core_nouns = sorted(spine_first, key=len, reverse=True)[:3] if spine_first \
+                     else sorted(signal_nouns, key=len, reverse=True)[:3]
+        core_verbs = sorted(conducted_verbs, key=len, reverse=True)[:1]
+
+        # Phrase: noun(s) + verb-as-modifier. "phase coherence suppress" not "phase cancel coherence"
+        query_terms = core_nouns[:2] + core_verbs if (core_nouns and core_verbs) else core_nouns[:3]
 
         # ── SEVEN ORACLES — parallel queries ─────────────
         print(f"  {DIM}oracles{R}\n")
@@ -572,6 +722,32 @@ class Session:
         active_noun_sets = [s for s in results_nouns if s]
         active_verb_sets = [s for s in results_verbs if s]
 
+        # ── NOISE FILTER ──────────────────────────────────
+        # Two-pass filter:
+        # 1. Per-breath: words in 3+ oracles simultaneously are this-breath noise
+        # 2. Session: words that have recurred across >= threshold breaths are
+        #    structural search-engine scaffolding — suppress for the session.
+        if active_noun_sets:
+            # Per-breath pass
+            word_counts = {}
+            for s in active_noun_sets:
+                for w in s:
+                    word_counts[w] = word_counts.get(w, 0) + 1
+            per_breath_noise = {w for w, c in word_counts.items() if c >= 3}
+
+            # Update session frequency (count breaths each word appears in)
+            all_this_breath = set()
+            for s in active_noun_sets:
+                all_this_breath |= s
+            for w in all_this_breath:
+                self._oracle_freq[w] = self._oracle_freq.get(w, 0) + 1
+            session_noise = {w for w, c in self._oracle_freq.items()
+                             if c >= self._oracle_noise_threshold}
+
+            noise = per_breath_noise | session_noise
+            active_noun_sets = [s - noise for s in active_noun_sets]
+            active_noun_sets = [s for s in active_noun_sets if s]
+
         # ── 8th GATE ─────────────────────────────────────
         oracle_names = [name for name, _, _ in ORACLES]
         question = eighth_gate(
@@ -609,9 +785,18 @@ class Session:
         if len(self.spine_verbs) > 6:
             self.spine_verbs = set(sorted(self.spine_verbs)[:6])
 
-        # Update carry
-        if question != '∅':
-            self.carry = question
+        # Update carry — store the surviving signal noun, not the full question.
+        # If we stored the question string, carry.split()[:3] would be
+        # ["what", "does", "christian"] and rebuild the same question forever.
+        # The carry should be a word that can resonate — not a sentence.
+        _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
+        if _carry_candidate:
+            _word = _carry_candidate[0]
+            # Only carry real words (len >= 4, not question-structure words)
+            _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
+                     'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
+            if len(_word) >= 4 and _word not in _skip:
+                self.carry = _word
 
         # AND accumulation across session
         if self.session_nouns is None:
