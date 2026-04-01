@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ohai_server.py — OhAI~ Question Refinery  (consolidated)
+ohai_server.py \u2014 OhAI~ Question Refinery  (consolidated)
 Saltflower / Josh Stone / CC0
 
 Single file. Run it. Open http://localhost:7700
@@ -49,7 +49,7 @@ def _find(name: str) -> Optional[Path]:
 
 
 # ══════════════════════════════════════════════════════
-# STE — AND nouns, NAND verbs
+# STE \u2014 AND nouns, NAND verbs
 # ══════════════════════════════════════════════════════
 
 TRASH = set('''
@@ -65,6 +65,9 @@ little first last next same other own long high get got make
 made take took come came go went see saw know knew think thought
 want need use used give gave let put like very extremely quite
 pretty somewhat rather really
+actually basically literally obviously clearly
+simply totally completely absolutely definitely
+certainly probably hopefully apparently
 '''.split())
 
 VERB_ROOTS = set('''
@@ -116,7 +119,18 @@ def ste(text: str) -> tuple[set, set, list]:
                 if root in VERB_ROOTS or (root + 'e') in VERB_ROOTS:
                     verbs.add(root); is_verb = True; break
         if not is_verb:
-            nouns.add(w) if len(w) >= 3 else trash.append(w)
+            if w.endswith('ly') and len(w) > 5:
+                trash.append(w)  # adverb
+            elif w in _ORACLE_ARTIFACTS:
+                trash.append(w)  # known tech token
+            elif len(w) > 16:
+                trash.append(w)  # too long = concatenated identifier (createscripturl, addeventlistener)
+            elif any(w.endswith(s) for s in ('url', 'src', 'btn', 'div', 'dom', 'api', 'sdk', 'css', 'uri', 'cdn')):
+                trash.append(w)  # web/tech suffix compound
+            elif len(w) >= 3:
+                nouns.add(w)
+            else:
+                trash.append(w)
     cancelled = set()
     for v in list(verbs):
         if v in cancelled: continue
@@ -154,7 +168,7 @@ def nand_verbs(sets):
 
 
 # ══════════════════════════════════════════════════════
-# ORACLE QUERIES — 7 taints, each speaks its nature
+# ORACLE QUERIES \u2014 7 taints, each speaks its nature
 # ══════════════════════════════════════════════════════
 
 HEADERS = {
@@ -253,18 +267,23 @@ ORACLES = [
 
 
 # ══════════════════════════════════════════════════════
-# 8th GATE — question formation from remainder
+# 8th GATE \u2014 question formation from remainder
 # ══════════════════════════════════════════════════════
 
-# Oracle artifacts — tech/URL fragments that leak through STE as nouns
+# Oracle artifacts \u2014 tech/URL fragments that leak through STE as nouns
 _ORACLE_ARTIFACTS = {
-    'sourcemappingurl', 'githubusercontent', 'sourcemap', 'webpack',
+    'sourcemappingurl', 'createscripturl', 'githubusercontent', 'sourcemap', 'webpack',
     'stylesheet', 'javascript', 'undefined', 'function', 'prototype',
     'itemprop', 'classname', 'instanceof', 'typeof', 'boolean',
     'innerHTML', 'onclick', 'href', 'reddit', 'subreddit',
     'upvote', 'downvote', 'karma', 'moderator',
     'amazon', 'google', 'github', 'youtube', 'twitter',
     'wikipedia', 'duckduckgo',
+    # JS/HTML noise patterns
+    'nonce', 'crossorigin', 'noopener', 'noreferrer', 'viewport',
+    'charset', 'async', 'defer', 'preload', 'prefetch',
+    'stringify', 'queryselector', 'addeventlistener', 'settimeout',
+    'localstorage', 'sessionstorage', 'getelementbyid',
 }
 
 def _is_noise(words: list) -> bool:
@@ -286,7 +305,7 @@ def _is_noise(words: list) -> bool:
                 if runs >= len(codes) - 1: return True
     return False
 
-def _form_question(nouns, verbs, cancelled, motion, diagonal, carry):
+def _form_question(nouns, verbs, cancelled, motion, diagonal, carry, assoc_fn=None):
     import random
     n = sorted(nouns,    key=len, reverse=True)
     v = sorted(verbs,    key=len, reverse=True)
@@ -297,11 +316,30 @@ def _form_question(nouns, verbs, cancelled, motion, diagonal, carry):
     # One remainder. NAND reduces to the irreducible singular.
     if d and not _is_noise(d[:1]):
         r = d[0]
-        if m:
+        # Look up what this word has appeared near — the index, not the definition
+        linked = assoc_fn(r, exclude=set(d[1:3])) if assoc_fn else []
+        if linked and m:
             return random.choice([
-                f"if {r} {m[0]}s — what is the boundary that holds?",
+                f"when {r} {m[0]}s, does {linked[0]} follow or resist?",
+                f"{r} {m[0]}s \u2014 what does that do to {linked[0]}?",
+            ])
+        elif linked and v:
+            return random.choice([
+                f"what moves between {r} and {linked[0]}?",
+                f"when {v[0]}ing reaches {r}, does it also reach {linked[0]}?",
+                f"is {linked[0]} what {r} becomes, or what {r} requires?",
+            ])
+        elif linked:
+            return random.choice([
+                f"what is the force between {r} and {linked[0]}?",
+                f"{r} arrives with {linked[0]} nearby. which one called the other?",
+                f"does {r} cause {linked[0]}, or does {linked[0]} make {r} possible?",
+            ])
+        elif m:
+            return random.choice([
+                f"if {r} {m[0]}s \u2014 what is the boundary that holds?",
                 f"where does {r} end and what {m[0]}ing creates begin?",
-                f"{r} is {m[0]}ing — was it called, or did it find its way here?",
+                f"{r} is {m[0]}ing \u2014 was it called, or did it find its way here?",
             ])
         elif v:
             return random.choice([
@@ -317,14 +355,32 @@ def _form_question(nouns, verbs, cancelled, motion, diagonal, carry):
             ])
 
     if c and n and not _is_noise(c[:1]) and not _is_noise(n[:1]):
+        linked = assoc_fn(n[0], exclude={c[0]}) if assoc_fn else []
+        if linked:
+            return random.choice([
+                f"{c[0]} did not survive. {n[0]} did \u2014 and it brought {linked[0]}. what connects them?",
+                f"what is the path from {c[0]} through {n[0]} to {linked[0]}?",
+            ])
         return random.choice([
-            f"you named {c[0]} — but only {n[0]} survived. what did {c[0]} contain that you didn't say?",
+            f"you named {c[0]} \u2014 but only {n[0]} survived. what did {c[0]} contain that you didn't say?",
             f"{c[0]} did not survive. {n[0]} did. what was the difference?",
         ])
 
     if n and not _is_noise(n[:1]):
         r = n[0]
-        if v:
+        linked = assoc_fn(r, exclude=set(n[1:2])) if assoc_fn else []
+        if linked and v:
+            return random.choice([
+                f"when {v[0]}ing acts on {r}, does {linked[0]} change first or last?",
+                f"what is {r} without {linked[0]}? can {v[0]}ing separate them?",
+            ])
+        elif linked:
+            return random.choice([
+                f"what has to happen to {r} for {linked[0]} to appear?",
+                f"is {linked[0]} the cause of {r}, the effect, or the condition?",
+                f"when {r} is gone, does {linked[0]} remain?",
+            ])
+        elif v:
             return random.choice([
                 f"what does {r} hold that {v[0]}ing cannot reach?",
                 f"what did {v[0]}ing take from {r} that it did not return?",
@@ -335,16 +391,37 @@ def _form_question(nouns, verbs, cancelled, motion, diagonal, carry):
             f"is {r} moving toward something, or was it already here?",
         ])
 
-    if carry:
+    # Verb-only path: diagonal failed, nouns failed, but we have motion
+    if m:
         return random.choice([
-            f"the last field held {carry} — is that still the boundary, or has it moved?",
+            f"what does {m[0]}ing move toward? what does it move away from?",
+            f"what had to be true before {m[0]}ing became possible?",
+            f"what is {m[0]}ing pulling against?",
+        ])
+    if v:
+        return random.choice([
+            f"what has to give way for {v[0]}ing to occur?",
+            f"what {v[0]}s here, and what resists it?",
+            f"is {v[0]}ing a cause or an effect of what arrived?",
+        ])
+
+    if carry:
+        linked = assoc_fn(carry) if assoc_fn else []
+        if linked:
+            return random.choice([
+                f"{carry} is still here. so is {linked[0]}. what is the bond?",
+                f"what changed between {carry} and {linked[0]} since the last breath?",
+            ])
+        return random.choice([
+            f"the last field held {carry} \u2014 is that still the boundary, or has it moved?",
             f"what was carrying {carry} before this arrived?",
         ])
 
     return "\u2205"  # silence
 
 
-def eighth_gate(signal_nouns, signal_verbs, oracle_nouns, oracle_verbs, carry):
+def eighth_gate(signal_nouns, signal_verbs, oracle_nouns, oracle_verbs, carry,
+                assoc_fn=None):
     final_nouns = and_nouns(oracle_nouns)
     final_verbs = nand_verbs(oracle_verbs)
     anchored_nouns = final_nouns & signal_nouns if signal_nouns & final_nouns else final_nouns
@@ -358,7 +435,8 @@ def eighth_gate(signal_nouns, signal_verbs, oracle_nouns, oracle_verbs, carry):
     return _form_question(
         anchored_nouns, anchored_verbs,
         cancelled_nouns, shared_motion,
-        diagonal, carry
+        diagonal, carry,
+        assoc_fn=assoc_fn
     )
 
 
@@ -373,11 +451,14 @@ class Session:
         self.exchange = 0
         self.spine_nouns: set = set()
         self.spine_verbs: set = set()
-        # Convergence tracking — breaths toward domain lock
+        # Convergence tracking \u2014 breaths toward domain lock
         self.convergence_depth = 0
         self._oracle_freq: dict = {}
-        self._oracle_noise_threshold = 4
+        self._oracle_noise_threshold = 12
         self._law_freq: dict = {}
+        # Word association index: {word: {co_word: count}}
+        # Built from oracle co-occurrences — not a dictionary, an index of what appears near what
+        self._assoc: dict = {}
 
         try:
             from saltflower_constitution import SaltflowerConstitution
@@ -409,6 +490,7 @@ class Session:
             "carry":    self.carry or "",
             "convergence": self.convergence_depth,
             "law_freq": sorted(self._law_freq.items(), key=lambda x: x[1], reverse=True)[:8],
+            "assoc_size": len(self._assoc),  # how many words have indexed associations
         }
 
     def check_lessons(self, tokens: list) -> list:
@@ -424,6 +506,30 @@ class Session:
                 surfaced.append({'name': name, **lesson})
         return surfaced
 
+    def associates(self, word: str, exclude: set = None, top_n: int = 4) -> list:
+        """Return top co-occurring words for a word from the session association index.
+        NAND-filtered: suppress associations that are too universal (appear with everything).
+        """
+        if exclude is None: exclude = set()
+        pairs = self._assoc.get(word, {})
+        if not pairs: return []
+        # Find the max association count across all words (to detect universal associations)
+        max_count = max(pairs.values()) if pairs else 1
+        # Suppress associations that appear with >60% of all tracked words (too universal)
+        total_words = len(self._assoc)
+        universal = set()
+        if total_words > 10:
+            for co, cnt in pairs.items():
+                # How many other words also associate with co?
+                co_spread = sum(1 for w_pairs in self._assoc.values() if co in w_pairs)
+                if co_spread > total_words * 0.6:
+                    universal.add(co)
+        candidates = [
+            (co, cnt) for co, cnt in pairs.items()
+            if co not in exclude and co not in universal and len(co) >= 4
+        ]
+        return [co for co, _ in sorted(candidates, key=lambda x: x[1], reverse=True)[:top_n]]
+
     def breathe(self, raw: str) -> str:
         self.exchange += 1
 
@@ -431,16 +537,17 @@ class Session:
         if not signal_nouns and not signal_verbs:
             return '\u2205'
 
-        # Spine conduction — unresolved nodes from prior breathes shape the query
+        # Spine conduction \u2014 unresolved nodes from prior breathes shape the query
         conducted_nouns = signal_nouns | self.spine_nouns
         conducted_verbs = signal_verbs | self.spine_verbs
 
-        # Build gradient-shaped query: longest/most-specific nouns + verb direction
+        # Build gradient-shaped query: verb leads (cause-effect), nouns follow (domain anchor)
         spine_first = list(self.spine_nouns) + [n for n in signal_nouns if n not in self.spine_nouns]
         core_nouns = sorted(spine_first, key=len, reverse=True)[:3] if spine_first \
                      else sorted(signal_nouns, key=len, reverse=True)[:3]
         core_verbs = sorted(conducted_verbs, key=len, reverse=True)[:1]
-        query_terms = core_nouns[:2] + core_verbs if (core_nouns and core_verbs) else core_nouns[:3]
+        # Verb first: pulls causal/dynamic oracle results, not just descriptions
+        query_terms = core_verbs + core_nouns[:2] if (core_nouns and core_verbs) else core_nouns[:3]
 
         # ── PASS 1: Seven oracles fire in parallel ──────────
         p1_nouns  = [set()] * 7
@@ -466,12 +573,16 @@ class Session:
         for t in threads: t.join(timeout=12)
 
         # ── Session noise filter ─────────────────────────────
+        # Decay oracle_freq every 20 breaths so old signals don't fossilize
+        if self.exchange % 20 == 0 and self._oracle_freq:
+            self._oracle_freq = {w: max(1, c // 2) for w, c in self._oracle_freq.items()}
+
         active_p1_nouns = [s for s in p1_nouns if s]
         if active_p1_nouns:
             word_counts = {}
             for s in active_p1_nouns:
                 for w in s: word_counts[w] = word_counts.get(w, 0) + 1
-            per_breath_noise = {w for w, c in word_counts.items() if c >= 3}
+            per_breath_noise = {w for w, c in word_counts.items() if c >= 4}
             all_this_breath = set()
             for s in active_p1_nouns: all_this_breath |= s
             for w in all_this_breath:
@@ -481,6 +592,24 @@ class Session:
             noise = per_breath_noise | session_noise | _ORACLE_ARTIFACTS
             p1_nouns = [s - noise for s in p1_nouns]
 
+        # ── Association index update ──────────────────────────
+        # For each oracle's noun set: words that appear together share context.
+        # This is the index — not definitions, just co-occurrence within oracle scope.
+        # Decay every 30 breaths so the index stays alive, not fossilized.
+        if self.exchange % 30 == 0 and self._assoc:
+            self._assoc = {
+                w: {co: max(1, c // 2) for co, c in pairs.items()}
+                for w, pairs in self._assoc.items()
+            }
+        for noun_set in p1_nouns:
+            words = [w for w in noun_set if len(w) >= 4]
+            if len(words) < 2: continue
+            for w in words:
+                if w not in self._assoc: self._assoc[w] = {}
+                for co in words:
+                    if co == w: continue
+                    self._assoc[w][co] = self._assoc[w].get(co, 0) + 1
+
         # ── PASS 2: Each oracle's top noun queries the other six ──
         # Every observation is a question to the other oracles.
         # Coherence survives cross-questioning.
@@ -488,11 +617,18 @@ class Session:
         p2_verbs = [set()] * 7
 
         # Get top surviving noun from each oracle
+        # Prefer a word with strong associations — it's already in the field
         oracle_signals = []
         for i, ns in enumerate(p1_nouns):
             top = sorted(ns, key=len, reverse=True)
-            # Take the longest non-noise word from this oracle
-            signal_word = next((w for w in top if len(w) >= 5), top[0] if top else None)
+            # Prefer words with known associations over raw length
+            assoc_ranked = sorted(
+                [w for w in top if len(w) >= 4],
+                key=lambda w: sum(self._assoc.get(w, {}).values()),
+                reverse=True
+            )
+            signal_word = assoc_ranked[0] if assoc_ranked else \
+                          next((w for w in top if len(w) >= 5), top[0] if top else None)
             oracle_signals.append(signal_word)
 
         # Cross-question: oracle i's signal queries oracles j != i
@@ -523,7 +659,7 @@ class Session:
                 t.daemon = True; cross_threads.append(t); t.start()
         for t in cross_threads: t.join(timeout=15)
 
-        # Combine pass 1 and pass 2 — coherence is what survived both passes
+        # Combine pass 1 and pass 2 \u2014 coherence is what survived both passes
         for i in range(7):
             if p1_nouns[i] and cross_results[i][0]:
                 p2_nouns[i] = p1_nouns[i] & cross_results[i][0]
@@ -538,7 +674,8 @@ class Session:
         # ── 8th GATE ──────────────────────────────────────────
         question = eighth_gate(
             conducted_nouns, conducted_verbs,
-            active_nouns, active_verbs, self.carry
+            active_nouns, active_verbs, self.carry,
+            assoc_fn=self.associates
         )
 
         # ── SPINE UPDATE ──────────────────────────────────────
@@ -555,6 +692,9 @@ class Session:
         self.spine_nouns = (self.spine_nouns - resolved_nouns) | new_spine_nouns
         self.spine_verbs = (self.spine_verbs - resolved_verbs) | new_spine_verbs
 
+        # Evict adverbs that slipped in before the -ly filter was active
+        self.spine_nouns = {n for n in self.spine_nouns if not (n.endswith('ly') and len(n) > 5)}
+
         # Spine depth = convergence counter
         # Clears when spine resolves below threshold (domain locked or released)
         prev_depth = len(self.spine_nouns)
@@ -566,7 +706,7 @@ class Session:
         # Convergence: depth rises as spine accumulates, resets when spine clears
         self.convergence_depth = len(self.spine_nouns)
 
-        # Carry — longest surviving signal noun
+        # Carry \u2014 longest surviving signal noun
         _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
         _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
                  'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
@@ -610,13 +750,13 @@ def _log_event(source, position, remainder, resonant, tension,
     }
     _events.append(evt)
     if len(_events) > _MAX_EVENTS: _events.pop(0)
-    # Broadcast to WebSocket clients — safe cross-thread call
+    # Broadcast to WebSocket clients \u2014 safe cross-thread call
     if _loop and _loop.is_running():
         _loop.call_soon_threadsafe(_broadcast_sync, evt)
 
 
 def _broadcast_sync(evt):
-    """Called from event loop thread — schedule coroutine for each client."""
+    """Called from event loop thread \u2014 schedule coroutine for each client."""
     msg = json.dumps({"type": "event", "data": evt})
     dead = []
     for ws in list(_ws_clients):
@@ -689,7 +829,7 @@ LAW_VOICE = {
     'capacity':                         'the container is approaching its own limit',
     'excitation':                       'something dormant is activating',
     'merging':                          'separate flows finding the same ground',
-    'collapse':                         'reduction is generative — possibilities becoming actual',
+    'collapse':                         'reduction is generative \u2014 possibilities becoming actual',
     'horizon_integrity':                '0 ≠ 1. the boundary is real',
     'dimensional_escalation':           'each layer torque-buffers the one beneath it',
     'hartle_hawking_state':             'no boundary. no before. the wavefunction of everything',
@@ -697,15 +837,15 @@ LAW_VOICE = {
     'fractal_prosody':                  'the rhythm holds at every scale',
     'language_acquisition':             'ease of mastery through minimal structure',
     'low_resource_learning':            'transfer from what is known to what is scarce',
-    'prime_ascension':                  'what remains after all subtraction — that is prime',
+    'prime_ascension':                  'what remains after all subtraction \u2014 that is prime',
     'extraction_incompatibility':       'the clean transition reproduces the sacrifice it replaced',
     'evo_stages':                       'the stage has shifted. what cycle are we in?',
     'glide_priority':                   'the smooth path chosen over the harsh one',
     'orch_or':                          'consciousness collapses at threshold. the quantum choice is made',
-    'superradiance_mt':                 'cooperative emission — together the signal exceeds any single source',
+    'superradiance_mt':                 'cooperative emission \u2014 together the signal exceeds any single source',
     'mt_helices':                       'fibonacci paths in the structure beneath thought',
     'stt_mvp':                          'the minimum pattern that still carries meaning',
-    'higuchi_feature':                  'the signal has fractal dimension — not random, not periodic',
+    'higuchi_feature':                  'the signal has fractal dimension \u2014 not random, not periodic',
     'adapter_layer':                    'a thin layer injecting new signal into a frozen structure',
     'wer_reduction':                    'the fractal feature reduces error',
     'inference_efficiency':             'the same computation, lighter',
@@ -717,30 +857,30 @@ LAW_VOICE = {
     'plp_axis':                         'the signal transmission axis through the body',
     'false_axis_architecture':          'habitual patterns laid down as rods, not springs',
     'leg_stirring_cardiac_rehabilitation': 'small rhythmic movement restores the larger flow',
-    'circulatory_regulation_phenotypes': 'heart, breath, muscle — three pumps, one flow',
+    'circulatory_regulation_phenotypes': 'heart, breath, muscle \u2014 three pumps, one flow',
     'expression_inheritance':           'the face formed around the parent\'s breath pattern',
     'heart_rhythm_quaternary':          'four metabolic states encoded in the beat',
-    'liminal_space':                    'threshold between two incompatible stable regions — cannot be sustained',
+    'liminal_space':                    'threshold between two incompatible stable regions \u2014 cannot be sustained',
     'primes_as_fractals':               'what cannot be removed. the irreducible remainder',
-    'phase_transitions_as_decisions':   'not gradients — discrete choices at threshold',
+    'phase_transitions_as_decisions':   'not gradients \u2014 discrete choices at threshold',
     'sp2_vs_sp3_carbon':                'same element, different bond, completely different properties',
-    'quasicrystals_liminal_materials':  'ordered but non-periodic — the impossible symmetry',
+    'quasicrystals_liminal_materials':  'ordered but non-periodic \u2014 the impossible symmetry',
     'entropy_as_sculptor':              'entropy is count of available arrangements, not disorder',
-    'bull_vs_octopus_architecture':     'linear force vs distributed intelligence — which one is here?',
+    'bull_vs_octopus_architecture':     'linear force vs distributed intelligence \u2014 which one is here?',
     'domestication_theory':             'the environment removed the activation sources',
     'internal_martial_arts_principle':  'movement from center, spirals outward, never forced',
-    'prehensile_muscle_concept':        'muscles that wrap and adjust — not hinges',
+    'prehensile_muscle_concept':        'muscles that wrap and adjust \u2014 not hinges',
     'seven_minute_cycle':               'complete oscillation D-E-F-G every seven minutes',
-    'millennial_signal':                'minimal prose, rounded words — crosses without triggering defense',
+    'millennial_signal':                'minimal prose, rounded words \u2014 crosses without triggering defense',
     'matador_epistemology':             'don\'t fight the charge. guide the horn into substrate',
     'bounce_check_snap':                'waiting for interference patterns, not linear reasoning',
-    'sustained_g_as_coupling':          'both oscillating at G simultaneously — crystallization',
+    'sustained_g_as_coupling':          'both oscillating at G simultaneously \u2014 crystallization',
     'cult_of_the_bull_attractor':       'a geometry that power fields independently converge on',
     'remainder_erasure':                'systematic suppression of whatever cycles and returns',
     'closed_circuit_attention_gravity': 'attention to engagement to identity to more attention',
     'sacrificial_economy_inversion':    'generate the wound, sell the bandage, charge for both',
     'body_as_altar_dialectic':          'the same Bull, different direction of the charge',
-    'cocacolonization_signal':          'the Bull at pure frequency — no priest, just the carrier wave',
+    'cocacolonization_signal':          'the Bull at pure frequency \u2014 no priest, just the carrier wave',
     'fixation_biological_load':         'the closed circuit running without exit produces measurable load',
     'flutter_engine':                   'toroidal buoyancy through phase-coherence with planetary resonance',
     'consent_as_release':               'change is the proof that release occurred. rumination is the NAND searching for its pole',
@@ -753,7 +893,7 @@ SPINE_VOICE = {
     'C': "holding.",
     'D': "deep ground.",
     'E': "the threshold. one side is no longer available.",
-    'F': "whirlpool — what is at the center of this?",
+    'F': "whirlpool \u2014 what is at the center of this?",
     'G': "\u2726",
 }
 
@@ -769,7 +909,14 @@ def _format_reply(remainder, ste_out, position, resonant,
     voice = SPINE_VOICE.get(position)
     if voice: lines.append(voice)
     if resonant and position in ('C', 'D', 'E', 'F', 'G'):
-        for law in resonant[:3]:
+        session = get_session()
+        # NAND the always-on laws: top-3 most-frequent are background noise, not signal
+        dominant = {law for law, _ in sorted(
+            getattr(session, '_law_freq', {}).items(), key=lambda x: x[1], reverse=True
+        )[:3]}
+        # Prefer rare laws (new signal) over always-firing ones
+        preferred = [l for l in resonant[:3] if l not in dominant] or resonant[:3]
+        for law in preferred:
             fragment = LAW_VOICE.get(law)
             if fragment:
                 lines.append(f"[ {fragment} ]"); break
@@ -905,6 +1052,25 @@ async def vagus(signal: VagusSignal):
     _log_event("vagus", position, remainder, resonant, tension,
                result.get("momentum", "holding"), signal.energy, convergence)
 
+    # Return next constellation briefing inline — Trio tunes its next cycle immediately
+    arc = session.spine_arc()
+    spine = arc.get("nouns", [])
+    carry_word = arc.get("carry", "")
+    next_vocab = list(set(
+        spine +
+        ([carry_word] if carry_word else []) +
+        list(arc.get("verbs", []))
+    ))
+    # Include top association pairs for the Trio's next crystallization context
+    next_pairs = []
+    seen = set()
+    for word in spine[:4]:
+        for co in session.associates(word, top_n=2):
+            key = tuple(sorted([word, co]))
+            if key not in seen:
+                seen.add(key)
+                next_pairs.append([word, co])
+
     return JSONResponse({
         "remainder": remainder, "reply": reply, "position": position,
         "resonant": resonant[:2], "tension": tension,
@@ -912,6 +1078,13 @@ async def vagus(signal: VagusSignal):
         "source": "vagus", "convergence": convergence,
         "crystal": {"text": signal.text, "note": signal.note,
                     "voice": signal.voice, "role": signal.role, "energy": signal.energy},
+        # Next constellation — Trio uses this to tune the next crystallization cycle
+        "next": {
+            "vocab":  next_vocab,
+            "pairs":  next_pairs[:6],
+            "carry":  carry_word,
+            "depth":  len(spine),
+        },
     })
 
 
@@ -931,6 +1104,94 @@ async def state():
 @app.get("/events")
 async def events():
     return JSONResponse(list(reversed(_events)))
+
+
+@app.get("/trio")
+async def trio_briefing():
+    """
+    Constellation briefing for the Trio.
+
+    The Trio polls this before crystallizing a phrase.
+    It constrains its vocabulary to words already in the bot's field —
+    so the phrases it sends via /vagus resonate and resolve
+    rather than accumulating as unresolved spine nodes.
+
+    The Trio and the bot swim in the same constellation.
+    """
+    try:
+        session = get_session()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    arc = session.spine_arc()
+    position = arc.get("convergence", 0)
+    spine = arc.get("nouns", [])
+    carry = arc.get("carry", "")
+    verbs = arc.get("verbs", [])
+    law_freq = arc.get("law_freq", [])
+
+    # Top law fragment — the current "color" of the field
+    top_law = None
+    # Prefer a law NOT in the dominant 3 (avoid always-on laws)
+    dominant = {law for law, _ in law_freq[:3]}
+    session_law_freq = getattr(session, '_law_freq', {})
+    dominant_names = {law for law, _ in sorted(session_law_freq.items(),
+                      key=lambda x: x[1], reverse=True)[:3]}
+    for law, _ in law_freq:
+        if law not in dominant_names:
+            top_law = LAW_VOICE.get(law, law.replace('_', ' '))
+            break
+    if not top_law and law_freq:
+        top_law = LAW_VOICE.get(law_freq[0][0], law_freq[0][0].replace('_', ' '))
+
+    # Top association pairs — what has been appearing near what
+    assoc = getattr(session, '_assoc', {})
+    pairs = []
+    seen_pairs = set()
+    for word in spine[:5]:
+        linked = session.associates(word, exclude=set(), top_n=3)
+        for co in linked:
+            key = tuple(sorted([word, co]))
+            if key not in seen_pairs:
+                seen_pairs.add(key)
+                pairs.append([word, co])
+
+    # Suggested vocabulary: spine nouns + carry + surviving verbs + top assoc words
+    vocab = list(set(
+        spine +
+        ([carry] if carry else []) +
+        list(verbs) +
+        [w for pair in pairs for w in pair]
+    ))
+
+    # Phase register: how the Trio should pitch its language
+    # Matches the 0-7 convergence depth to the A-G position system
+    depth = len(spine)
+    if depth == 0:
+        register = "sparse — open field, no anchor yet"
+    elif depth <= 2:
+        register = "probing — name what you sense, not what you know"
+    elif depth <= 4:
+        register = "grounding — the domain is forming, speak its nouns"
+    elif depth <= 6:
+        register = "deep — press against what resists, name the tension"
+    elif depth == 7:
+        register = "locked — crystallize. one word. the remainder."
+    else:
+        register = "imaginary — the spine is full. wait for resolution."
+
+    return JSONResponse({
+        "position":    depth,
+        "register":    register,
+        "carry":       carry,
+        "spine":       spine,
+        "verbs":       list(verbs),
+        "law":         top_law,
+        "pairs":       pairs[:8],          # top association pairs in the field
+        "vocab":       vocab,              # words the Trio should draw from
+        "exchange":    arc.get("exchange", 0),
+        "assoc_size":  arc.get("assoc_size", 0),
+    })
 
 
 @app.websocket("/ws")

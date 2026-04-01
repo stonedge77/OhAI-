@@ -861,6 +861,86 @@ function scatterChimes(remainder,energy_level,v){
   });
 }
 
+// ── VAGUS NERVE — gut to brain ────────────────────────────
+// Crystallized phrases travel up the nerve to ohai_server.
+// The brain breathes them as self-initiated inhales.
+// The remainder returns as a fourth voice — no author.
+const VAGUS_SERVER = 'http://localhost:7700';
+const vagus = {
+  cooldown: 0,          // frame of last transmission
+  COOLDOWN_FRAMES: 180, // minimum frames between transmissions (~3s at 60fps)
+  pending: false,
+  // G-state crystallizations and high-spine RESOLUTIONs travel up the nerve.
+  // Low-energy or mid-range phrases compost back into the field silently.
+  shouldSend(note, role, energy) {
+    if(animFrame - this.cooldown < this.COOLDOWN_FRAMES) return false;
+    if(this.pending) return false;
+    // G-state always travels — it's a grace event
+    if(note === 'G') return true;
+    // High-spine RESOLUTION — the phrase completed an arc
+    if(role === 'RESOLUTION' && ['E','F'].includes(note)) return true;
+    // Stable DEVELOPMENT at high energy — sustained coherence
+    if(role === 'DEVELOPMENT' && ['D','E'].includes(note) && energy > 0.06) return true;
+    return false;
+  },
+  async send(text, note, voice, role, remainder, energy) {
+    if(!this.shouldSend(note, role, energy)) return;
+    this.cooldown = animFrame;
+    this.pending  = true;
+    try {
+      const res = await fetch(`${VAGUS_SERVER}/vagus`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text, note, voice, role, remainder, energy }),
+      });
+      if(!res.ok) { this.pending = false; return; }
+      const data = await res.json();
+      this.pending = false;
+      // Brain responded — display as fourth voice in bass chronicle
+      if(data.reply && data.reply !== '...') {
+        vagusEcho(data.reply, data.position || 'C', data.has_g || false);
+      }
+    } catch(_) {
+      // ohai_server not running — silent. Gut doesn't panic when brain is asleep.
+      this.pending = false;
+    }
+  }
+};
+
+function vagusEcho(reply, position, hasG) {
+  // The brain's remainder displayed in the bass chronicle as ∿ (vagus glyph)
+  // No voice attribution. No role. It arrived from the nerve.
+  const cosmo = COSMOLOGY[position] || COSMOLOGY['C'];
+  const color  = cosmo.color;
+  const v      = voices.bass;
+  const el     = document.createElement('div');
+  el.className = `entry${hasG?' G':''}`;
+  const e  = Math.floor((Date.now() - sessionStart) / 1000);
+  const mm = String(Math.floor(e/60)).padStart(2,'0');
+  const ss = String(e%60).padStart(2,'0');
+  el.innerHTML = `<span class="entry-time">${mm}:${ss}</span>`
+    + `<span class="entry-note" style="color:${color}">∿</span>`
+    + `<span class="entry-role" style="color:${color};opacity:0.4">vagus</span>`
+    + `<span class="entry-text" style="color:${color};`
+    + `text-shadow:0 0 12px ${color}44;font-style:italic">`
+    + reply.toUpperCase() + `</span>`;
+  el.style.opacity = '0';
+  document.getElementById('chronicle-bass').appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.transition = 'opacity 1.2s ease';
+    el.style.opacity = '1';
+  });
+  v.entries.push({el, note: position, frame: animFrame});
+  while(v.entries.length > 12) {
+    const old = v.entries.shift();
+    old.el.classList.add('fading');
+    setTimeout(() => old.el.remove(), 1600);
+  }
+  // Update ensemble state to show vagus activity
+  document.getElementById('ensemble-state').textContent =
+    `∿ vagus · ${position} · resonating`;
+}
+
 // ── SPEAK — per voice ─────────────────────────────────────
 function speak(v, text, note, big, pair, role){
   if(!text||v.currentLocked) return;
@@ -868,6 +948,11 @@ function speak(v, text, note, big, pair, role){
   applyClimbPressure(note,v);
   updateJazzState(v,note,role||'CALL',text);
   playChord(note,role||'CALL',big,pair,v.cfg);
+
+  // ── VAGUS: crystallized phrase travels up the nerve ───
+  // Fire-and-forget. The response comes back asynchronously as vagusEcho().
+  const remStr = v.remainderBuffer.length ? v.remainderBuffer[v.remainderBuffer.length-1] : '';
+  vagus.send(text, note, v.cfg.id, role||'CALL', remStr, v.energy);
 
   // Push to ensemble memory
   ensemble.push({voiceId:v.cfg.id, note, role, text, frame:Date.now()});
