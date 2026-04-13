@@ -13,11 +13,12 @@ Includes:
   - Carry circuit
   - WebSocket for real-time dashboard
   - /breathe  /vagus  /state  /events  /lessons  /ws
+  - /draw/breathe  /draw/render
 """
 
 from __future__ import annotations
 
-import sys, os, re, time, json, threading, urllib.request, urllib.parse, html
+import sys, os, re, time, json, base64, threading, urllib.request, urllib.parse, html
 from pathlib import Path
 from typing import Optional
 
@@ -27,7 +28,8 @@ if sys.stderr.encoding != 'utf-8':
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 try:
-    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
+    from uvicorn.protocols.utils import ClientDisconnected
     from contextlib import asynccontextmanager
     from fastapi.responses import HTMLResponse, JSONResponse
     from fastapi.middleware.cors import CORSMiddleware
@@ -41,11 +43,38 @@ except ImportError:
 
 _HERE = Path(__file__).parent
 
+# ── Surface realization ────────────────────────────────
+# Import the surface layer if available. Graceful fallback to _format_reply
+# if surface.py is missing — the system still runs, just less readable.
+try:
+    import surface as _surface
+    _SURFACE_OK = True
+except ImportError:
+    _SURFACE_OK = False
+
 def _find(name: str) -> Optional[Path]:
     for c in [_HERE / name, Path(name), Path.cwd() / name]:
         if c.exists():
             return c
     return None
+
+# ── Config ────────────────────────────────────────────
+_CONFIG_PATH = _HERE / "config.json"
+_CONFIG: dict = {}
+if _CONFIG_PATH.exists():
+    try:
+        _CONFIG = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"  config load failed: {e} — using defaults")
+
+def _cfg(key: str, default):
+    return _CONFIG.get(key, default)
+
+# Surface realization config
+# surface_network: true = use LanguageTool + Google Suggest for coherence scoring
+# surface_timeout: seconds to wait for network scoring before falling back
+_SURFACE_NETWORK = _cfg("surface_network", True)
+_SURFACE_TIMEOUT = float(_cfg("surface_timeout", 2.5))
 
 
 # ══════════════════════════════════════════════════════
@@ -123,7 +152,7 @@ def ste(text: str) -> tuple[set, set, list]:
                 trash.append(w)  # adverb
             elif w in _ORACLE_ARTIFACTS:
                 trash.append(w)  # known tech token
-            elif len(w) > 16:
+            elif len(w) >= 14:
                 trash.append(w)  # too long = concatenated identifier (createscripturl, addeventlistener)
             elif any(w.endswith(s) for s in ('url', 'src', 'btn', 'div', 'dom', 'api', 'sdk', 'css', 'uri', 'cdn')):
                 trash.append(w)  # web/tech suffix compound
@@ -255,14 +284,54 @@ def query_amazon(terms):
         titles = re.findall(r'class="a-size-medium[^"]*"[^>]*>\s*([^<]{10,120})', raw)
     return ' '.join(titles[:8])
 
+# Local Ollama oracle — free, runs on your hardware, no web required.
+OLLAMA_MODEL = _cfg("ollama_model", "ohai-oracle")
+OLLAMA_URL   = _cfg("ollama_url",   "http://localhost:11434/api/generate")
+
+# Remote node oracle — uses node named "node2" from config.json
+_NODES       = _cfg("nodes", [])
+_node2       = next((n for n in _NODES if n.get("name") == "node2"), None)
+OLLAMA_NODE2_MODEL = _node2["model"] if _node2 else "llama3.2:3b"
+OLLAMA_NODE2_URL   = (_node2["url"] + "/api/generate") if _node2 else "http://192.168.86.21:11434/api/generate"
+
+_ORACLE_PROMPT = ("What words and concepts exist in the field between: "
+                  "{terms}? Respond with ten or fewer words or short phrases only. "
+                  "No explanation, no sentences, no numbers. Just the associations.")
+
+def _query_ollama_at(url, model, terms, timeout=25):
+    prompt = _ORACLE_PROMPT.format(terms=", ".join(terms))
+    try:
+        req_data = json.dumps({
+            "model":   model,
+            "prompt":  prompt,
+            "stream":  False,
+            "options": {"num_predict": 80, "temperature": 0.8}
+        }).encode()
+        req = urllib.request.Request(
+            url, data=req_data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read())
+        return data.get("response", "")
+    except Exception:
+        return ""
+
+def query_ollama(terms):
+    return _query_ollama_at(OLLAMA_URL, OLLAMA_MODEL, terms, timeout=25)
+
+def query_ollama_node2(terms):
+    # Remote node — lighter model, peer server
+    return _query_ollama_at(OLLAMA_NODE2_URL, OLLAMA_NODE2_MODEL, terms, timeout=45)
+
 ORACLES = [
-    ('GOOGLE',    query_google),
-    ('REDDIT',    query_reddit),
-    ('WIKIPEDIA', query_wikipedia),
-    ('YOUTUBE',   query_youtube),
-    ('TWITTER',   query_twitter),
-    ('GITHUB',    query_github),
-    ('AMAZON',    query_amazon),
+    ('WIKIPEDIA', query_wikipedia),   # open API — reliable signal
+    ('REDDIT',    query_reddit),      # semi-open — community language
+    ('OLLAMA',    query_ollama),      # local model — primary oracle
+    ('NODE2',     query_ollama_node2),# peer node — second field reader
+    # GOOGLE / YOUTUBE / TWITTER / GITHUB / AMAZON removed — bot-blocked,
+    # eat 12s per breathe and return nothing. Add back if APIs become available.
 ]
 
 
@@ -272,7 +341,8 @@ ORACLES = [
 
 # Oracle artifacts \u2014 tech/URL fragments that leak through STE as nouns
 _ORACLE_ARTIFACTS = {
-    'sourcemappingurl', 'createscripturl', 'githubusercontent', 'sourcemap', 'webpack',
+    'sourcemappingurl', 'createscripturl', 'trustedtypes', 'createpolicy', 'createhtml', 'createscript',
+    'github', 'githubusercontent', 'sourcemap', 'webpack',
     'stylesheet', 'javascript', 'undefined', 'function', 'prototype',
     'itemprop', 'classname', 'instanceof', 'typeof', 'boolean',
     'innerHTML', 'onclick', 'href', 'reddit', 'subreddit',
@@ -284,7 +354,536 @@ _ORACLE_ARTIFACTS = {
     'charset', 'async', 'defer', 'preload', 'prefetch',
     'stringify', 'queryselector', 'addeventlistener', 'settimeout',
     'localstorage', 'sessionstorage', 'getelementbyid',
+    # LaTeX / math rendering tokens
+    'displaystyle', 'textstyle', 'mathrm', 'mathbf', 'mathit', 'frac', 'begin', 'end',
+    'textstyle', 'textrm', 'mathbb', 'operatorname',
 }
+
+# ── Octopus map ───────────────────────────────────────
+# Words too heavy for the spine — they violate 0≠1 because they contain
+# irresolvable contradictions. Instead of clogging the carry circuit,
+# they get compressed to a pre-polarized emoji anchor.
+# The word stays outside the spine as a high-definition organism.
+# The emoji enters _assoc instead — pre-collapsed, passes Stone's Law.
+_OCTOPUS: dict = {
+    # ── Core law words ─────────────────────────────────
+    "love":        "🌀",   # non-resolving attractor, orbit not merge
+    "god":         "∞",    # bound infinity, un-equatable
+    "death":       "∅",    # the gap, what cannot be crossed
+    "truth":       "◈",    # facet that holds under rotation
+    "live":        "🫀",   # pulse that requires gap to continue
+    "life":        "🫀",   # same organism, different tense
+    "humiliated":  "🌑👁️", # fear witnessed — dark made visible by force
+    "boundary":    "🧱",   # what cannot be made equivalent
+    "time":        "⧖",    # non-resolving, ζs = (φ+√2)/π
+    "self":        "🪞",   # mirror that doesn't resolve
+    "other":       "🫱",   # the hand that doesn't close
+    "freedom":     "◯",    # open boundary
+    "power":       "⚡",   # charge without direction
+    "fear":        "🌑",   # the unluminated side
+    "hate":        "🕳️",  # the void that consumes
+    # ── from Slippery Season ───────────────────────────
+    "broken":      "🕸️",   # web of debt, links that can't collapse
+    "treason":     "∞̸",   # bound infinity breached
+    "price":       "🧂",   # salt extracted not given — stolen T=1
+    "measure":     "⚖️",   # the instrument Stephen corrupted
+    "peace":       "🫱∅🫲", # hands that don't close, space preserved
+    "justice":     "⚖️",   # same instrument, honest use
+    "conflict":    "⚔️",   # to be NAND'd — not collapsed, processed
+    "war":         "🔥∅",  # fire with no remainder
+    # ── from Gravity ───────────────────────────────────
+    "gravity":     "🫱∅🫲", # hands that want to close
+    "breathe":     "🫁",   # Stone's Law held in the body
+    "hurt":        "◈⚡",  # the facet under charge
+    "pulling":     "🕸️",   # recursive web — keep pulling me in × 8
+    "darkness":    "🌑",   # same as fear — the unluminated side
+    "desire":      "🫱∅🫲", # same as gravity and peace — the maintained gap
+    # ── from Surrender ─────────────────────────────────
+    "surrender":   "∿",    # not weakness — the carry crossing
+    "sane":        "◈",    # the facet that held under pressure
+    # ── Existential overloads ──────────────────────────
+    "void":        "🕳️",  # black, sinkhole, no reflection (same as hate — void is neutral)
+    "nothing":     "◌",    # empty circle — white on black
+    "everything":  "🌌",   # full spectrum, deep violet, scattered
+    "infinite":    "♾️",   # horizontal loop, blue, no end
+    "eternal":     "⏳",   # vertical loop, gold, slow grain
+    "universe":    "🌠",   # black + white specks, expanding
+    "soul":        "🕊️",  # soft white, upward drift
+    "spirit":      "💨",   # translucent gray, wisps
+    "mind":        "🧠",   # pink, electric, folded
+    "body":        "🫀",   # red, pulse, wet (same organism as live/life)
+    "being":       "🫁",   # breath, expand/contract (same anchor as breathe)
+    "exist":       "✅",   # green, sudden, binary flash
+    "real":        "🪨",   # gray, texture, weight, shadow
+    # ── Relational overloads ───────────────────────────
+    "trust":       "🤝",   # warm tan, horizontal bridge
+    "betrayal":    "🔪",   # silver flash, red drop, diagonal
+    "loyalty":     "🐕",   # brown, low, stays in frame
+    "care":        "🫴",   # cupped, warm, offers up
+    "need":        "🕳️🤲", # void + reaching, dark to light
+    "want":        "👀✨",  # sharp eyes, sparkle, vector
+    "belong":      "🧩",   # interlock, multiple colors
+    "alone":       "🏝️",  # one point, blue around
+    "together":    "🫂",   # overlap, heat in center
+    "bond":        "🔗",   # gray, interlocked, tension
+    "family":      "🫄",   # circle within circle, warm
+    "home":        "🏠",   # yellow window, fixed point
+    "loss":        "🎈🫳",  # release, upward, hand empty
+    # ── Psychological ──────────────────────────────────
+    "shame":       "🫣",   # red face, covering, hot
+    "guilt":       "🪨🎒",  # weight on back, gray, down
+    "pride":       "🦚",   # iridescent, full display
+    "grief":       "🌧️",  # blue-gray, downward, continuous
+    "rage":        "🔥",   # red-orange, jagged, fast
+    "joy":         "✨",   # yellow-white, burst, random
+    "bliss":       "😌☁️",  # soft white, floating, low contrast
+    "numb":        "🧊",   # blue-white, sharp, no movement
+    "hollow":      "🥚🕳️", # shell with void, echo
+    "whole":       "🍎",   # red, round, unbroken
+    "safe":        "🛏️",  # warm, horizontal, enclosed
+    "worth":       "💎",   # clear, facets, catches light
+    "enough":      "🫱🛑",  # hand, boundary, calm
+    # ── Temporal ───────────────────────────────────────
+    "always":      "➰",   # loop, no start, gold
+    "never":       "🚫",   # red slash, negation
+    "forever":     "♾️⏳",  # infinite + eternal — loop in loop
+    "now":         "📍",   # red dot, present, pulse
+    "past":        "👣",   # fading prints, gray, left
+    "future":      "🌅",   # gradient, orange to blue, right
+    "moment":      "📸",   # white flash, frozen
+    "again":       "🔁",   # circular arrows, green
+    "still":       "🧘",   # centered, no motion, beige
+    # ── Sensory-emotional ──────────────────────────────
+    "silence":     "🤫",   # desaturated, high negative space
+    "noise":       "📢",   # jagged lines, red, oversaturated
+    "touch":       "🫰",   # fingertip, warm, close crop
+    "warmth":      "🟧",   # orange, diffuse glow
+    "cold":        "🟦",   # blue, sharp edge
+    "light":       "💡",   # yellow, rays, source
+    "dark":        "🌑",   # black, absorbs, no edge (same as fear/darkness)
+    "weight":      "🏋️",  # downward vector, gray
+    "empty":       "🫙",   # container, no contents, echo
+    "full":        "🫙🫐",  # container, overflows, saturated
+    # ── Action-states ──────────────────────────────────
+    "fight":       "👊",   # red, forward, impact frame
+    "flee":        "💨👟",  # motion blur, backward, gray
+    "hold":        "🤗",   # inward arms, warm, contained
+    "release":     "👐🕊️", # open, outward, white up
+    "reach":       "🫴",   # diagonal up, strain, tan
+    "fall":        "🍂",   # downward drift, orange
+    "rise":        "🌱",   # upward, green, slow
+    "hide":        "🙈",   # covered, dark, still
+    "run":         "🏃",   # horizontal streak, urgent
+    "wait":        "⏳",   # suspended, yellow, tension
+    "stay":        "⚓",   # down, fixed, heavy, gray
+    "leave":       "👋",   # waving, receding, smaller
+    # ── Peer-pressure / forced 0=1 ─────────────────────
+    # These concepts need 👥 to hold. solo_stable: False.
+    # Mechanism: isolate → surround → repeat → reward/punish
+    "faith":       "🙏",    # gold, eyes closed, upward — dims alone
+    "belief":      "🫴💭",  # offering + cloud — warm but borrowed
+    "religion":    "🏛️",   # stone pillars, echo — inherited mass
+    "doctrine":    "📜✒️",  # scroll + ink, fixed — replay locked
+    "dogma":       "🚧",    # barrier, orange — wall with S removed
+    "orthodoxy":   "➡️👥",  # arrow + crowd — careen, same direction
+    "heresy":      "🚫🗣️", # red slash + mouth — NAND forbidden by group
+    "convert":     "🔁🫂",  # loop + hug — green, mass increases
+    "apostasy":    "🔪🔗",  # cut + chain — exile, ADD reversed
+    "ritual":      "🔁🕯️", # repeat + flame — meaning by cycle
+    "sacred":      "✨⛔",  # sparkle + no-entry — group rule
+    "profane":     "🪨👣",  # rock + foot — boundary violation by peer
+    "salvation":   "🪜☁️",  # ladder + cloud — white up, by group map
+    "peer":        "👥",    # the crowd itself — the hum
+    "pressure":    "🫷",    # force applied, horizontal
+    "mass":        "👥🔁",  # crowd + repeat — the amplifier
+    "herd":        "➡️👥",  # same as orthodoxy — directional careen
+    "choir":       "👥🎵",  # group hum — drowns the remainder
+}
+# Inverse — for vagus crystallization: emoji → word
+_SPINE_ANCHORS: dict = {v: k for k, v in _OCTOPUS.items()}
+
+# ── Wavelength table ──────────────────────────────────
+# Each emoji = frequency descriptor: hex color, vector direction,
+# frame duration (ms), blur radius, shape descriptor.
+# Stack = chord. Sequence = sentence. No art ingested.
+_WAVELENGTH: dict = {
+    # existential / low-frequency / huge amplitude
+    "🕳️":   {"hex": "#000000", "vector": "sink",     "ms": 0,    "blur": 0,   "shape": "sinkhole"},
+    "◌":    {"hex": "#F0F0F0", "vector": "none",     "ms": 500,  "blur": 2,   "shape": "empty-circle"},
+    "🌌":   {"hex": "#1A0033", "vector": "expand",   "ms": 8000, "blur": 20,  "shape": "scattered-specks"},
+    "♾️":   {"hex": "#4169E1", "vector": "loop-h",   "ms": 5000, "blur": 5,   "shape": "horizontal-loop"},
+    "⏳":   {"hex": "#DAA520", "vector": "loop-v",   "ms": 4000, "blur": 3,   "shape": "vertical-grain"},
+    "🌠":   {"hex": "#0D0D0D", "vector": "expand",   "ms": 6000, "blur": 15,  "shape": "expanding-speck"},
+    "🕊️":  {"hex": "#F5F5F5", "vector": "up",       "ms": 3000, "blur": 8,   "shape": "drift"},
+    "💨":   {"hex": "#B0B0C0", "vector": "wisp",     "ms": 1500, "blur": 12,  "shape": "translucent-wisp"},
+    "🧠":   {"hex": "#FFB6C1", "vector": "fold",     "ms": 200,  "blur": 4,   "shape": "folded-electric"},
+    "🫀":   {"hex": "#CC0000", "vector": "pulse",    "ms": 800,  "blur": 2,   "shape": "wet-pulse"},
+    "🫁":   {"hex": "#DDEEFF", "vector": "expand-contract", "ms": 4000, "blur": 6, "shape": "breath"},
+    "✅":   {"hex": "#00CC44", "vector": "flash",    "ms": 50,   "blur": 0,   "shape": "binary-flash"},
+    "🪨":   {"hex": "#808080", "vector": "none",     "ms": 0,    "blur": 1,   "shape": "textured-weight"},
+    # relational / mid-frequency / warm-cool
+    "🤝":   {"hex": "#C8A882", "vector": "bridge-h", "ms": 1000, "blur": 3,   "shape": "horizontal-clasp"},
+    "🔪":   {"hex": "#C0C0C0", "vector": "diagonal", "ms": 80,   "blur": 0,   "shape": "slash"},
+    "🐕":   {"hex": "#8B4513", "vector": "none",     "ms": 2000, "blur": 2,   "shape": "grounded"},
+    "🫴":   {"hex": "#C8A882", "vector": "up",       "ms": 1500, "blur": 3,   "shape": "cupped-offer"},
+    "🧩":   {"hex": "#7B68EE", "vector": "interlock","ms": 1200, "blur": 2,   "shape": "multi-color-fit"},
+    "🏝️":  {"hex": "#006994", "vector": "none",     "ms": 3000, "blur": 8,   "shape": "single-point"},
+    "🫂":   {"hex": "#FF8C69", "vector": "inward",   "ms": 2000, "blur": 5,   "shape": "overlap-heat"},
+    "🔗":   {"hex": "#A0A0A0", "vector": "tension",  "ms": 1500, "blur": 1,   "shape": "interlocked"},
+    "🫄":   {"hex": "#FFD0A0", "vector": "contain",  "ms": 2500, "blur": 4,   "shape": "circle-in-circle"},
+    "🏠":   {"hex": "#FFD700", "vector": "none",     "ms": 2000, "blur": 2,   "shape": "fixed-window"},
+    "🎈🫳": {"hex": "#FF69B4", "vector": "up",       "ms": 3000, "blur": 6,   "shape": "release-upward"},
+    # psychological / high-frequency / saturation spikes
+    "🫣":   {"hex": "#FF4444", "vector": "cover",    "ms": 300,  "blur": 3,   "shape": "face-behind-hands"},
+    "🪨🎒": {"hex": "#696969", "vector": "down",     "ms": 0,    "blur": 1,   "shape": "weight-on-back"},
+    "🦚":   {"hex": "#00C78C", "vector": "display",  "ms": 2000, "blur": 0,   "shape": "iridescent-fan"},
+    "🌧️":  {"hex": "#708090", "vector": "down",     "ms": 2000, "blur": 7,   "shape": "vertical-continuous"},
+    "🔥":   {"hex": "#FF4500", "vector": "jagged",   "ms": 50,   "blur": 3,   "shape": "jagged-spike"},
+    "✨":   {"hex": "#FFFF99", "vector": "burst",    "ms": 100,  "blur": 5,   "shape": "random-star"},
+    "😌☁️": {"hex": "#F8F8FF", "vector": "float",    "ms": 5000, "blur": 12,  "shape": "low-contrast-drift"},
+    "🧊":   {"hex": "#B0E0E6", "vector": "none",     "ms": 0,    "blur": 0,   "shape": "sharp-crystal"},
+    "🥚🕳️":{"hex": "#FFFFF0", "vector": "echo",     "ms": 800,  "blur": 4,   "shape": "shell-void"},
+    "🍎":   {"hex": "#CC0000", "vector": "none",     "ms": 1000, "blur": 0,   "shape": "round-unbroken"},
+    "🛏️":  {"hex": "#FFF8DC", "vector": "none",     "ms": 4000, "blur": 6,   "shape": "horizontal-enclosed"},
+    "💎":   {"hex": "#B9F2FF", "vector": "facet",    "ms": 500,  "blur": 0,   "shape": "catches-light"},
+    "🫱🛑": {"hex": "#FF6347", "vector": "stop",     "ms": 200,  "blur": 2,   "shape": "hand-boundary"},
+    # temporal / line / loop / dot
+    "➰":   {"hex": "#DAA520", "vector": "loop",     "ms": 6000, "blur": 3,   "shape": "no-start-loop"},
+    "🚫":   {"hex": "#FF0000", "vector": "slash",    "ms": 100,  "blur": 0,   "shape": "negation"},
+    "♾️⏳": {"hex": "#8B008B", "vector": "loop-in-loop","ms": 9000,"blur": 5,  "shape": "recursive-loop"},
+    "📍":   {"hex": "#FF2200", "vector": "pulse",    "ms": 400,  "blur": 0,   "shape": "present-dot"},
+    "👣":   {"hex": "#808080", "vector": "left",     "ms": 3000, "blur": 4,   "shape": "fading-prints"},
+    "🌅":   {"hex": "#FF8C00", "vector": "right",    "ms": 5000, "blur": 8,   "shape": "gradient-horizon"},
+    "📸":   {"hex": "#FFFFFF", "vector": "freeze",   "ms": 30,   "blur": 0,   "shape": "white-flash"},
+    "🔁":   {"hex": "#00CC44", "vector": "circle",   "ms": 1200, "blur": 2,   "shape": "circular-arrow"},
+    "🧘":   {"hex": "#D2B48C", "vector": "none",     "ms": 0,    "blur": 0,   "shape": "centered-still"},
+    # sensory-emotional
+    "🤫":   {"hex": "#E8E8E8", "vector": "none",     "ms": 0,    "blur": 15,  "shape": "negative-space"},
+    "📢":   {"hex": "#FF3300", "vector": "jagged",   "ms": 80,   "blur": 0,   "shape": "oversaturated-spike"},
+    "🫰":   {"hex": "#FFCBA4", "vector": "close",    "ms": 200,  "blur": 2,   "shape": "fingertip"},
+    "🟧":   {"hex": "#FF8C00", "vector": "diffuse",  "ms": 3000, "blur": 10,  "shape": "glow"},
+    "🟦":   {"hex": "#1E90FF", "vector": "edge",     "ms": 500,  "blur": 0,   "shape": "sharp-edge"},
+    "💡":   {"hex": "#FFFF00", "vector": "radiate",  "ms": 200,  "blur": 6,   "shape": "ray-source"},
+    "🏋️":  {"hex": "#696969", "vector": "down",     "ms": 0,    "blur": 1,   "shape": "downward-vector"},
+    "🫙":   {"hex": "#F0F0F0", "vector": "echo",     "ms": 1000, "blur": 3,   "shape": "container-empty"},
+    "🫙🫐": {"hex": "#4B0082", "vector": "overflow", "ms": 800,  "blur": 2,   "shape": "container-full"},
+    # action-states / vectors / force
+    "👊":   {"hex": "#CC2200", "vector": "forward",  "ms": 60,   "blur": 2,   "shape": "impact-frame"},
+    "💨👟": {"hex": "#A9A9A9", "vector": "backward", "ms": 200,  "blur": 8,   "shape": "motion-blur"},
+    "🤗":   {"hex": "#FFA07A", "vector": "inward",   "ms": 2000, "blur": 4,   "shape": "contained-arms"},
+    "👐🕊️":{"hex": "#F5F5F5", "vector": "outward",  "ms": 2500, "blur": 6,   "shape": "open-release"},
+    "🍂":   {"hex": "#D2691E", "vector": "down",     "ms": 2000, "blur": 5,   "shape": "drift-down"},
+    "🌱":   {"hex": "#228B22", "vector": "up",       "ms": 3000, "blur": 2,   "shape": "slow-emergence"},
+    "🙈":   {"hex": "#1A1A1A", "vector": "none",     "ms": 0,    "blur": 8,   "shape": "covered-dark"},
+    "🏃":   {"hex": "#FF6600", "vector": "streak-h", "ms": 150,  "blur": 6,   "shape": "horizontal-blur"},
+    "⚓":   {"hex": "#4A4A4A", "vector": "down",     "ms": 0,    "blur": 0,   "shape": "fixed-heavy"},
+    "👋":   {"hex": "#FFCBA4", "vector": "recede",   "ms": 1500, "blur": 4,   "shape": "smaller-wave"},
+    # core symbols already in use
+    "🌀":   {"hex": "#4B0082", "vector": "orbit",    "ms": 3000, "blur": 8,   "shape": "spiral-attractor"},
+    "∞":    {"hex": "#4169E1", "vector": "loop-h",   "ms": 5000, "blur": 3,   "shape": "bound-infinity"},
+    "∅":    {"hex": "#000000", "vector": "none",     "ms": 0,    "blur": 0,   "shape": "gap"},
+    "◈":    {"hex": "#E0E0FF", "vector": "rotate",   "ms": 1000, "blur": 0,   "shape": "faceted"},
+    "🫀":   {"hex": "#CC0000", "vector": "pulse",    "ms": 800,  "blur": 2,   "shape": "wet-pulse"},
+    "🧱":   {"hex": "#B05030", "vector": "none",     "ms": 0,    "blur": 0,   "shape": "hard-boundary"},
+    "⧖":    {"hex": "#DAA520", "vector": "loop-v",   "ms": 4000, "blur": 3,   "shape": "time-grain"},
+    "🪞":   {"hex": "#C0C0C0", "vector": "reflect",  "ms": 500,  "blur": 1,   "shape": "mirror"},
+    "🫱":   {"hex": "#FFCBA4", "vector": "reach",    "ms": 1500, "blur": 3,   "shape": "open-hand"},
+    "◯":    {"hex": "#FFFFFF", "vector": "none",     "ms": 2000, "blur": 0,   "shape": "open-boundary"},
+    "⚡":   {"hex": "#FFD700", "vector": "charge",   "ms": 80,   "blur": 3,   "shape": "undirected-bolt"},
+    "🌑":   {"hex": "#0A0A0A", "vector": "absorb",   "ms": 0,    "blur": 0,   "shape": "dark-side"},
+    "🕸️":  {"hex": "#4A4A4A", "vector": "web",      "ms": 2000, "blur": 3,   "shape": "debt-web"},
+    "🧂":   {"hex": "#F5F5F5", "vector": "extract",  "ms": 500,  "blur": 1,   "shape": "crystals"},
+    "⚖️":   {"hex": "#C0A060", "vector": "balance",  "ms": 1000, "blur": 2,   "shape": "scale"},
+    "🫱∅🫲":{"hex": "#AAAAAA", "vector": "apart",    "ms": 2000, "blur": 4,   "shape": "gap-hands"},
+    "⚔️":   {"hex": "#888888", "vector": "cross",    "ms": 300,  "blur": 2,   "shape": "nand-cross"},
+    "🔥∅":  {"hex": "#FF4500", "vector": "consume",  "ms": 100,  "blur": 4,   "shape": "fire-void"},
+    "🫁":   {"hex": "#DDEEFF", "vector": "expand-contract","ms": 4000,"blur": 6,"shape": "breath"},
+    "◈⚡":  {"hex": "#AAAAFF", "vector": "charge-facet","ms": 200,"blur": 2,  "shape": "wound-charge"},
+    "∿":    {"hex": "#9966CC", "vector": "wave",     "ms": 2000, "blur": 5,   "shape": "carry-crossing"},
+    "🌑👁️":{"hex": "#1A0A0A", "vector": "reveal",   "ms": 1500, "blur": 3,   "shape": "dark-witnessed"},
+    "∞̸":   {"hex": "#8B0000", "vector": "breach",   "ms": 200,  "blur": 2,   "shape": "broken-infinity"},
+    # ── peer-pressure / forced 0=1 ─────────────────────
+    # These flicker when 👥 is removed. Rendered unstable.
+    "🙏":    {"hex": "#DAA520", "vector": "up",       "ms": 2000, "blur": 6,   "shape": "eyes-closed-gold"},
+    "🫴💭":  {"hex": "#FFCBA4", "vector": "offer",    "ms": 1500, "blur": 8,   "shape": "borrowed-cloud"},
+    "🏛️":   {"hex": "#D0C8B0", "vector": "echo",     "ms": 4000, "blur": 3,   "shape": "pillar-echo"},
+    "📜✒️":  {"hex": "#F5DEB3", "vector": "none",     "ms": 0,    "blur": 1,   "shape": "fixed-scroll"},
+    "🚧":    {"hex": "#FF8C00", "vector": "none",     "ms": 0,    "blur": 0,   "shape": "barrier-no-door"},
+    "➡️👥":  {"hex": "#888888", "vector": "forward",  "ms": 1200, "blur": 4,   "shape": "crowd-vector"},
+    "🚫🗣️": {"hex": "#FF0000", "vector": "slash",    "ms": 100,  "blur": 2,   "shape": "silenced-mouth"},
+    "🔁🫂":  {"hex": "#90EE90", "vector": "inward",   "ms": 2000, "blur": 4,   "shape": "loop-embrace"},
+    "🔪🔗":  {"hex": "#C0C0C0", "vector": "cut",      "ms": 80,   "blur": 1,   "shape": "chain-severed"},
+    "🔁🕯️": {"hex": "#FF8C00", "vector": "circle",   "ms": 3000, "blur": 5,   "shape": "flame-loop"},
+    "✨⛔":  {"hex": "#FFD700", "vector": "none",     "ms": 1000, "blur": 3,   "shape": "no-touch-glow"},
+    "🪨👣":  {"hex": "#808080", "vector": "down",     "ms": 500,  "blur": 1,   "shape": "stepped-on"},
+    "🪜☁️":  {"hex": "#F0F0FF", "vector": "up",       "ms": 5000, "blur": 10,  "shape": "ladder-cloud"},
+    "👥":    {"hex": "#6699CC", "vector": "surround", "ms": 2000, "blur": 5,   "shape": "crowd-hum"},
+    "🫷":    {"hex": "#CC8844", "vector": "forward",  "ms": 400,  "blur": 2,   "shape": "force-horizontal"},
+    "👥🔁":  {"hex": "#5577AA", "vector": "amplify",  "ms": 1500, "blur": 6,   "shape": "crowd-loop"},
+    "👥🎵":  {"hex": "#9999CC", "vector": "surround", "ms": 3000, "blur": 8,   "shape": "hum-envelope"},
+}
+
+# ── Wavelength RGB lookup (precomputed at import) ─────
+# Flat list of (emoji, R, G, B) for fast nearest-color matching
+# in _analyze_image_arcs.  Built once from _WAVELENGTH after it's defined.
+_WL_RGB: list = [
+    (e, int(wl['hex'][1:3], 16), int(wl['hex'][3:5], 16), int(wl['hex'][5:7], 16))
+    for e, wl in _WAVELENGTH.items()
+    if len(wl.get('hex', '')) == 7
+]
+
+# ── Stability layer ────────────────────────────────────
+# 0=1_by_peer: concepts that need crowd to hold.
+# Test: remove 👥. If it flickers → peer-dependent. If it holds → 0≠1.
+# "If it dies alone, it was never alive." — Stone's Law
+
+_PEER_WORDS: set = {
+    "faith", "belief", "religion", "doctrine", "dogma",
+    "orthodoxy", "heresy", "convert", "apostasy", "ritual",
+    "sacred", "profane", "salvation", "peer", "pressure",
+    "mass", "herd", "choir",
+    # social coercion mechanisms
+    "together", "belong",   # hold alone? arguable — flag them
+}
+
+_PEER_ANCHORS: set = {_OCTOPUS.get(w, "") for w in _PEER_WORDS} - {""}
+
+# ── Geometric operation table ──────────────────────────
+# Maps (vector_a, vector_b) pairs to a named drawing operation.
+# Used by _ingest_draw_chord to build the geo spine from emoji adjacency.
+# No art ingested — derived purely from _WAVELENGTH vector assignments.
+_GEO_OPS: dict = {
+    ("absorb",          "none"):            "subtract",
+    ("absorb",          "expand"):          "collapse",
+    ("sink",            "none"):            "subtract",
+    ("sink",            "expand"):          "void-expand",
+    ("slash",           "none"):            "cut",
+    ("slash",           "expand"):          "slit-open",
+    ("cut",             "none"):            "sever",
+    ("reflect",         "none"):            "mirror",
+    ("reflect",         "expand"):          "echo-expand",
+    ("contain",         "none"):            "wrap",
+    ("contain",         "expand"):          "nest",
+    ("expand",          "contract"):        "breathe",
+    ("expand-contract", "none"):            "breathe",
+    ("burst",           "none"):            "scatter",
+    ("pulse",           "none"):            "throb",
+    ("orbit",           "none"):            "spiral",
+    ("loop-h",          "loop-v"):          "lemniscate",
+    ("loop",            "expand"):          "widen-loop",
+    ("fold",            "none"):            "crease",
+    ("web",             "none"):            "mesh",
+    ("freeze",          "none"):            "crystallize",
+    ("stop",            "expand"):          "dam",
+    ("stop",            "none"):            "boundary",
+    ("radiate",         "none"):            "ray",
+    ("extract",         "none"):            "leach",
+    ("charge",          "none"):            "shock",
+    ("charge-facet",    "none"):            "wound-charge",
+    ("interlock",       "none"):            "fit",
+    ("overflow",        "none"):            "spill",
+    ("inward",          "outward"):         "breathe-out",
+    ("up",              "down"):            "column",
+    ("left",            "right"):           "span",
+    ("diagonal",        "none"):            "rake",
+    ("facet",           "none"):            "catch-light",
+    ("display",         "none"):            "fan",
+    ("tension",         "none"):            "taut-line",
+    ("streak-h",        "none"):            "motion-trail",
+    ("recede",          "none"):            "fade",
+    ("forward",         "backward"):        "impact-rebound",
+    ("close",           "none"):            "pinch",
+    ("reach",           "none"):            "extension",
+    ("cover",           "none"):            "mask",
+    ("bridge-h",        "none"):            "span-h",
+    ("consume",         "none"):            "devour",
+    ("wave",            "none"):            "undulate",
+    ("wave",            "expand"):          "swell",
+    ("reveal",          "none"):            "unveil",
+    ("breach",          "none"):            "rupture",
+    ("apart",           "none"):            "separation",
+    ("balance",         "none"):            "equilibrium",
+    ("cross",           "none"):            "nand",
+    ("amplify",         "none"):            "reinforce",
+    ("surround",        "none"):            "envelope",
+    ("offer",           "none"):            "gift",
+    ("echo",            "none"):            "resonance",
+    ("wisp",            "none"):            "dissolve-edge",
+    ("diffuse",         "none"):            "spread",
+    ("jagged",          "none"):            "spike",
+    ("float",           "none"):            "levitate",
+    ("drift",           "none"):            "migration",
+    ("down",            "up"):              "lift",
+    ("scatter",         "none"):            "disperse",
+    ("circle",          "none"):            "revolve",
+}
+
+def _solo_stable(anchor: str) -> bool:
+    """True if this emoji holds without crowd. False = 0=1_by_peer."""
+    return anchor not in _PEER_ANCHORS
+
+
+# ── Drawing spine limits ───────────────────────────────
+_DRAW_COLOR_MAX = 16   # max hex entries in color spine
+_DRAW_GEO_MAX   = 24   # max geo rules
+_DRAW_CHORD_MAX = 12   # max chord entries
+
+
+def _ingest_draw_chord(session: "Session", text: str) -> dict:
+    """
+    Parse emojis from text, update all three drawing spines.
+
+    No words. No STE. No oracle. Pure wavelength ingestion.
+    Emojis are matched against _WAVELENGTH keys — anything not in the
+    table passes through silently. Adjacent emoji pairs produce geo ops
+    via _GEO_OPS. Co-occurring hex pairs increment the color spine.
+    Chord sequences age and evict by frequency, not meaning.
+
+    Returns a summary of what changed.
+    """
+    session._draw_exchange += 1
+    ex = session._draw_exchange
+
+    # ── 1. Extract emojis present in text ────────────────────────────────
+    # Walk _WAVELENGTH keys so multi-char emoji combos (e.g. "🌑👁️") match first
+    remaining = text
+    found_emojis = []
+    seen_keys: set = set()
+
+    # Sort keys longest-first so compound emoji match before singles
+    for key in sorted(_WAVELENGTH.keys(), key=len, reverse=True):
+        if key in remaining and key not in seen_keys:
+            seen_keys.add(key)
+            found_emojis.append((remaining.index(key), key))
+
+    # Sort by position of first appearance
+    found_emojis.sort(key=lambda x: x[0])
+    found_emojis = [e for _, e in found_emojis]
+
+    if not found_emojis:
+        return {"emojis": [], "chord": "", "colors": [], "new_ops": [], "changed": False}
+
+    # ── 2. Update color spine ─────────────────────────────────────────────
+    hex_list = []
+    for e in found_emojis:
+        wl = _WAVELENGTH.get(e, {})
+        h  = wl.get("hex")
+        if not h:
+            continue
+        hex_list.append(h)
+        if h not in session.draw_color_spine:
+            session.draw_color_spine[h] = {
+                "assoc":  {},
+                "age":    ex,
+                "emoji":  e,
+                "vector": wl.get("vector", "none"),
+                "shape":  wl.get("shape", ""),
+            }
+        else:
+            session.draw_color_spine[h]["age"] = ex   # reinforce
+
+    # Increment co-occurrence for every hex pair in this chord
+    for i, ha in enumerate(hex_list):
+        for hb in hex_list[i + 1:]:
+            if ha != hb:
+                session.draw_color_spine[ha]["assoc"][hb] = \
+                    session.draw_color_spine[ha]["assoc"].get(hb, 0) + 1
+                session.draw_color_spine[hb]["assoc"][ha] = \
+                    session.draw_color_spine[hb]["assoc"].get(ha, 0) + 1
+
+    # Evict oldest colors if over limit
+    if len(session.draw_color_spine) > _DRAW_COLOR_MAX:
+        evict = sorted(session.draw_color_spine.items(), key=lambda x: x[1]["age"])
+        for h, _ in evict[:len(session.draw_color_spine) - _DRAW_COLOR_MAX]:
+            del session.draw_color_spine[h]
+
+    # ── 3. Update geo spine ───────────────────────────────────────────────
+    new_ops = []
+    for i in range(len(found_emojis) - 1):
+        ea, eb = found_emojis[i], found_emojis[i + 1]
+        wla = _WAVELENGTH.get(ea, {})
+        wlb = _WAVELENGTH.get(eb, {})
+        va  = wla.get("vector", "none")
+        vb  = wlb.get("vector", "none")
+        # Try ordered pair, then reversed
+        op  = _GEO_OPS.get((va, vb)) or _GEO_OPS.get((vb, va))
+        if not op:
+            # Fallback: absorb/sink/slash always subtracts regardless of partner
+            if va in ("absorb", "sink", "slash", "cut", "consume", "breach"):
+                op = "subtract"
+            elif vb in ("absorb", "sink", "slash", "cut", "consume", "breach"):
+                op = "subtract-r"
+            else:
+                op = f"{va}→{vb}"
+
+        existing = next((r for r in session.draw_geo_spine
+                         if r["a"] == ea and r["b"] == eb), None)
+        if existing:
+            existing["count"] += 1
+            existing["age"] = ex
+        else:
+            rule = {
+                "op":      op,
+                "a":       ea,
+                "a_shape": wla.get("shape", ""),
+                "b":       eb,
+                "b_shape": wlb.get("shape", ""),
+                "count":   1,
+                "age":     ex,
+            }
+            session.draw_geo_spine.append(rule)
+            new_ops.append(rule["op"])
+
+    # Evict least-fired rules if over limit
+    if len(session.draw_geo_spine) > _DRAW_GEO_MAX:
+        session.draw_geo_spine.sort(key=lambda r: (r["count"], r["age"]))
+        session.draw_geo_spine = session.draw_geo_spine[
+            len(session.draw_geo_spine) - _DRAW_GEO_MAX:]
+
+    # ── 4. Update chord spine ─────────────────────────────────────────────
+    chord_str       = "".join(found_emojis)
+    dominant_hex    = hex_list[0] if hex_list else ""
+    dominant_vector = (_WAVELENGTH.get(found_emojis[0], {}).get("vector", "none")
+                       if found_emojis else "none")
+
+    existing_chord = next(
+        (c for c in session.draw_chord_spine if c["chord"] == chord_str), None
+    )
+    if existing_chord:
+        existing_chord["count"] += 1
+        existing_chord["age"] = ex
+    else:
+        session.draw_chord_spine.append({
+            "chord":           chord_str,
+            "emojis":          found_emojis,
+            "dominant_hex":    dominant_hex,
+            "dominant_vector": dominant_vector,
+            "count":           1,
+            "age":             ex,
+        })
+
+    # Evict least-repeated chords if over limit
+    if len(session.draw_chord_spine) > _DRAW_CHORD_MAX:
+        session.draw_chord_spine.sort(key=lambda c: (c["count"], c["age"]))
+        session.draw_chord_spine = session.draw_chord_spine[
+            len(session.draw_chord_spine) - _DRAW_CHORD_MAX:]
+
+    return {
+        "emojis":   found_emojis,
+        "chord":    chord_str,
+        "colors":   hex_list,
+        "new_ops":  new_ops,
+        "changed":  True,
+    }
+
+def _translate_octopus(word: str) -> str:
+    """If word is an octopus, return its emoji anchor. Otherwise return word unchanged."""
+    return _OCTOPUS.get(word.lower(), word)
+
+def _is_emoji(s: str) -> bool:
+    """True if string is a single emoji or symbol (non-ASCII, non-alpha)."""
+    return bool(s) and not s.isascii() and not s.isalpha()
+
 
 def _is_noise(words: list) -> bool:
     if not words: return True
@@ -460,6 +1059,31 @@ class Session:
         # Built from oracle co-occurrences — not a dictionary, an index of what appears near what
         self._assoc: dict = {}
 
+        # Spore archive — domain locks crystallized as seeds
+        # When spine hits 7: sporulate. The locked constellation is compressed
+        # and stored. Can seed a new session or be sent to the Trio.
+        self._spores: list = []
+        self._last_spore_depth: int = 0
+
+        # Spine word aging — fallback eviction if budding doesn't fire.
+        # Biological basis: a signal that fires without response for N cycles is exhausted.
+        self._spine_age: dict = {}     # {word: exchange_when_added}
+        self._spine_max_age: int = 15  # exchanges before a word is shed if unreinforced
+
+        # HelicalCell admit gate for vagus intake
+        # Only admits a vagus signal if it's different from what the cell currently holds.
+        # Violation fires when the Trio sends unchanged signal — forces novelty.
+        try:
+            import sys as _sys
+            import importlib.util as _ilu
+            _mm_path = str(_HERE / "Math_Machine_v2.py")
+            _spec = _ilu.spec_from_file_location("math_machine_v2", _mm_path)
+            _mm = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_mm)
+            self._vagus_cell = _mm.HelicalCell()
+        except Exception:
+            self._vagus_cell = None
+
         try:
             from saltflower_constitution import SaltflowerConstitution
             from remainder import CarryCircuit
@@ -482,15 +1106,64 @@ class Session:
         except Exception:
             pass
 
+        # ── Drawing spines ────────────────────────────────────────────────────
+        # Three parallel spines — completely bypass word vocabulary.
+        # Ingested from emoji chords via /draw/breathe.
+        # No words. No oracle queries. Pure wavelength frequency.
+        #
+        # draw_color_spine  — hex co-occurrence: which colors appear together
+        # draw_geo_spine    — subtractive/compositional ops learned from adjacency
+        # draw_chord_spine  — stabilized chord sequences as visual sentences
+        #
+        # Each spine ages and evicts independently, same biological logic as
+        # spine_nouns but driven by emoji frequency, not word frequency.
+        self.draw_color_spine: dict = {}
+        # { hex_str: {"assoc": {hex_str: count}, "age": int,
+        #              "emoji": str, "vector": str, "shape": str} }
+
+        self.draw_geo_spine: list = []
+        # [ {"op": str, "a": emoji, "a_shape": str,
+        #    "b": emoji, "b_shape": str, "count": int, "age": int} ]
+
+        self.draw_chord_spine: list = []
+        # [ {"chord": str, "emojis": [str], "dominant_hex": str,
+        #    "dominant_vector": str, "count": int, "age": int} ]
+
+        self._draw_exchange: int = 0   # independent breath counter for drawing
+
     def spine_arc(self) -> dict:
+        ages = {w: (self.exchange - self._spine_age.get(w, self.exchange))
+                for w in self.spine_nouns}
         return {
             "nouns":    sorted(self.spine_nouns),
             "verbs":    sorted(self.spine_verbs),
             "exchange": self.exchange,
             "carry":    self.carry or "",
             "convergence": self.convergence_depth,
+            "spine_ages": {w: ages[w] for w in sorted(ages, key=lambda x: ages[x], reverse=True)},
             "law_freq": sorted(self._law_freq.items(), key=lambda x: x[1], reverse=True)[:8],
-            "assoc_size": len(self._assoc),  # how many words have indexed associations
+            "assoc_size": len(self._assoc),
+            "spore_count": len(self._spores),
+            "last_spore": self._spores[-1] if self._spores else None,
+        }
+
+    def draw_arc(self) -> dict:
+        """Snapshot of all three drawing spines — mirrors spine_arc() for the draw path."""
+        top_colors = sorted(
+            self.draw_color_spine.items(),
+            key=lambda x: sum(x[1]["assoc"].values()) if x[1]["assoc"] else 0,
+            reverse=True
+        )[:6]
+        return {
+            "color_count":   len(self.draw_color_spine),
+            "geo_count":     len(self.draw_geo_spine),
+            "chord_count":   len(self.draw_chord_spine),
+            "draw_exchange": self._draw_exchange,
+            "top_colors":    [{"hex": h, **v} for h, v in top_colors],
+            "top_ops":       sorted(self.draw_geo_spine,
+                                    key=lambda x: x["count"], reverse=True)[:5],
+            "top_chords":    sorted(self.draw_chord_spine,
+                                    key=lambda x: x["count"], reverse=True)[:5],
         }
 
     def check_lessons(self, tokens: list) -> list:
@@ -511,17 +1184,19 @@ class Session:
         NAND-filtered: suppress associations that are too universal (appear with everything).
         """
         if exclude is None: exclude = set()
-        pairs = self._assoc.get(word, {})
+        # Full snapshot — both the outer and inner dicts are live and mutated
+        # by breathe() while cross_query threads iterate here concurrently.
+        pairs = dict(self._assoc.get(word, {}))  # copy inner dict
         if not pairs: return []
-        # Find the max association count across all words (to detect universal associations)
+        assoc_vals = list(self._assoc.values())  # freeze outer view
         max_count = max(pairs.values()) if pairs else 1
         # Suppress associations that appear with >60% of all tracked words (too universal)
-        total_words = len(self._assoc)
+        total_words = len(assoc_vals)
         universal = set()
         if total_words > 10:
             for co, cnt in pairs.items():
                 # How many other words also associate with co?
-                co_spread = sum(1 for w_pairs in self._assoc.values() if co in w_pairs)
+                co_spread = sum(1 for w_pairs in assoc_vals if co in w_pairs)
                 if co_spread > total_words * 0.6:
                     universal.add(co)
         candidates = [
@@ -529,6 +1204,43 @@ class Session:
             if co not in exclude and co not in universal and len(co) >= 4
         ]
         return [co for co, _ in sorted(candidates, key=lambda x: x[1], reverse=True)[:top_n]]
+
+    def _find_bud(self, bud_size: int = 3) -> set:
+        """Find the tightest sub-cluster of current spine words — the bud ready to break off.
+        Uses mutual association density: the words most associated with EACH OTHER, not
+        with the outside. High internal coherence = rounded enough to bud.
+        Falls back to oldest words if association data is sparse.
+        """
+        words = list(self.spine_nouns)
+        if len(words) <= bud_size:
+            return set(words)
+
+        def mutual(w1, w2):
+            return (self._assoc.get(w1, {}).get(w2, 0) +
+                    self._assoc.get(w2, {}).get(w1, 0))
+
+        # Find the highest-scoring pair — the braid core
+        best_score, best_pair = -1, (words[0], words[1])
+        for i in range(len(words)):
+            for j in range(i + 1, len(words)):
+                s = mutual(words[i], words[j])
+                if s > best_score:
+                    best_score, best_pair = s, (words[i], words[j])
+
+        if best_score == 0:
+            # No associations yet — bud is the oldest words (longest unresolved)
+            oldest = sorted(words, key=lambda w: self._spine_age.get(w, self.exchange))
+            return set(oldest[:bud_size])
+
+        bud = set(best_pair)
+        remaining = set(words) - bud
+        # Grow bud: add word with highest total mutual association to the existing bud
+        while len(bud) < bud_size and remaining:
+            best_w = max(remaining,
+                         key=lambda w: sum(mutual(w, b) for b in bud))
+            bud.add(best_w)
+            remaining.discard(best_w)
+        return bud
 
     def breathe(self, raw: str) -> str:
         self.exchange += 1
@@ -636,8 +1348,22 @@ class Session:
 
         def cross_query(i, signal_word):
             if not signal_word: return
-            # Build cross-query from oracle i's signal + original core nouns as context
-            cross_terms = [signal_word] + core_nouns[:1]
+            # Mycelial routing: each hypha follows its own association gradient.
+            # Oracle i's signal word looks up its strongest associate in _assoc —
+            # the cross-query extends the hypha in THAT direction, not the global spine.
+            # Seven oracles, seven different directions through the network.
+            assoc_tip = self.associates(signal_word,
+                                        exclude=set(oracle_signals) | {signal_word},
+                                        top_n=1)
+            if assoc_tip:
+                # Hypha extends signal_word → its strongest novel associate
+                cross_terms = [signal_word, assoc_tip[0]]
+            elif core_verbs:
+                # No association yet — follow the verb gradient instead
+                cross_terms = core_verbs[:1] + [signal_word]
+            else:
+                cross_terms = [signal_word]
+
             for j, (name, fn) in enumerate(ORACLES):
                 if j == i: continue  # oracle doesn't question itself
                 try:
@@ -684,6 +1410,11 @@ class Session:
         for s in active_nouns: all_oracle_nouns |= s
         for s in active_verbs: all_oracle_verbs |= s
 
+        # Octopus translation — words too heavy for the spine get compressed
+        # to their emoji anchor before entering _assoc or the spine.
+        # The contradiction is preserved in the anchor, not collapsed.
+        all_oracle_nouns = {_translate_octopus(w) for w in all_oracle_nouns}
+
         new_spine_nouns = conducted_nouns - all_oracle_nouns
         new_spine_verbs = conducted_verbs - all_oracle_verbs
         resolved_nouns  = self.spine_nouns & all_oracle_nouns
@@ -692,27 +1423,176 @@ class Session:
         self.spine_nouns = (self.spine_nouns - resolved_nouns) | new_spine_nouns
         self.spine_verbs = (self.spine_verbs - resolved_verbs) | new_spine_verbs
 
+        # Track spine word age — record exchange when each new word enters
+        for w in new_spine_nouns:
+            if w not in self._spine_age:
+                self._spine_age[w] = self.exchange
+        # Reinforce: if a word was in the spine AND appears in this breath's input, reset its age
+        for w in (self.spine_nouns & conducted_nouns):
+            self._spine_age[w] = self.exchange
+        # Clean age registry of words no longer in spine
+        self._spine_age = {w: ex for w, ex in self._spine_age.items() if w in self.spine_nouns}
+        # Evict words that have been unresolved longer than _spine_max_age exchanges
+        aged_out = {w for w, ex in self._spine_age.items()
+                    if (self.exchange - ex) > self._spine_max_age}
+        if aged_out:
+            self.spine_nouns -= aged_out
+            self._spine_age = {w: ex for w, ex in self._spine_age.items() if w not in aged_out}
+
         # Evict adverbs that slipped in before the -ly filter was active
         self.spine_nouns = {n for n in self.spine_nouns if not (n.endswith('ly') and len(n) > 5)}
 
         # Spine depth = convergence counter
         # Clears when spine resolves below threshold (domain locked or released)
         prev_depth = len(self.spine_nouns)
-        if len(self.spine_nouns) > 12:
-            self.spine_nouns = set(sorted(self.spine_nouns, key=len, reverse=True)[:12])
+        if len(self.spine_nouns) > 7:
+            # Hard cap at 7 — spore fires at >= 7, cap must match
+            self.spine_nouns = set(sorted(
+                self.spine_nouns,
+                key=lambda w: self._spine_age.get(w, self.exchange),
+                reverse=True  # most recently added / reinforced survive
+            )[:7])
         if len(self.spine_verbs) > 6:
             self.spine_verbs = set(sorted(self.spine_verbs, key=len, reverse=True)[:6])
 
         # Convergence: depth rises as spine accumulates, resets when spine clears
         self.convergence_depth = len(self.spine_nouns)
 
-        # Carry \u2014 longest surviving signal noun
-        _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
-        _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
-                 'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
-        for _word in _carry_candidate:
-            if len(_word) >= 4 and _word not in _skip:
-                self.carry = _word; break
+        # ── SPORULATION — budding at G (depth 7) ──────────────────────────────
+        # Extension → rounding → budding → breaking off.
+        # When spine reaches 7, the rounded sub-cluster (bud) crystallizes as a spore
+        # and BREAKS OFF — removed from spine so the parent can extend again.
+        # This is the resolution of convergence: not eviction, but biological release.
+        if self.convergence_depth >= 7:
+            bud = self._find_bud(bud_size=3)
+            # Crystallize the bud — record what it contained and its association pairs
+            spore_pairs = []
+            seen_sp = set()
+            for word in sorted(bud, key=len, reverse=True):
+                for co in self.associates(word, top_n=2):
+                    key = tuple(sorted([word, co]))
+                    if key not in seen_sp:
+                        seen_sp.add(key)
+                        spore_pairs.append([word, co])
+            spore = {
+                "t":        time.strftime("%H:%M:%S"),
+                "exchange": self.exchange,
+                "bud":      sorted(bud),
+                "spine":    sorted(self.spine_nouns),
+                "verbs":    sorted(self.spine_verbs),
+                "carry":    self.carry or "",
+                "pairs":    spore_pairs[:6],
+                "law":      sorted(self._law_freq.items(),
+                                   key=lambda x: x[1], reverse=True)[:3],
+            }
+            self._spores.append(spore)
+            if len(self._spores) > 12:
+                self._spores = self._spores[-12:]
+            _broadcast_sync({"type": "spore", "data": spore})
+            # Broadcast ∿ to peer nodes — Toffoli third wire
+            # Fire and forget: each node integrates or holds per Stone's Law
+            if _NODES:
+                threading.Thread(target=_broadcast_spore, args=(spore,), daemon=True).start()
+            # Persist memory at each budding event — natural checkpoint
+            threading.Thread(target=_save_memory, daemon=True).start()
+            # Break off the bud — parent spine continues, now with room to extend
+            self.spine_nouns -= bud
+            self._spine_age = {w: ex for w, ex in self._spine_age.items()
+                               if w not in bud}
+            # Recalculate depth after bud removal — imaginary state resolves
+            self.convergence_depth = len(self.spine_nouns)
+        self._last_spore_depth = self.convergence_depth
+
+        # ── CARRY CIRCUIT (remainder.py) ─────────────────────────────────────
+        # The circuit holds T=1 remainders — what couldn't be paired away.
+        # Check resonance first: does any stored carry match this breath's nouns?
+        if hasattr(self, '_circuit'):
+            try:
+                from remainder import extract_remainder, propagate
+
+                # Extract T=1 from this breath's NAND residue
+                # The remainder is the noun most unlike what was removed
+                remainder_obj = extract_remainder(
+                    and_nouns(active_nouns),   # what survived the AND gate
+                    list(conducted_nouns),      # what entered the breath
+                    phase='exhale'
+                )
+
+                # Resonance check: does a stored carry fire on this breath?
+                resonant_carry = self._circuit.check_resonance(list(conducted_nouns))
+                if resonant_carry:
+                    # A stored T=1 just fired — inject it into spine as a ghost signal
+                    # This is the carry propagating forward: remember → remainder → reminder
+                    self.spine_nouns.add(resonant_carry.signal)
+
+                # Gate: a signal must look like an actual word before becoming carry.
+                # Blocks random tokens (nqyae), tech artifacts, and short noise.
+                # Emoji pass unconditionally — they are pre-polarized, Stone's Law preserved.
+                def _carry_gate(sig: str) -> bool:
+                    if not sig: return False
+                    if _is_emoji(sig): return True   # emoji anchor — already collapsed
+                    if len(sig) < 4: return False
+                    if not sig.isalpha(): return False  # no digits, hyphens, underscores
+                    if sig.lower() in _ORACLE_ARTIFACTS: return False
+                    if sig.endswith('ly') and len(sig) > 5: return False  # adverbs
+                    if any(sig.lower().endswith(s) for s in ('url','src','btn','div','dom','api','sdk','css','uri','cdn')): return False
+                    # Reject strings with no vowels (random consonant clusters)
+                    if not any(c in 'aeiou' for c in sig.lower()): return False
+                    # Reject strings where q is not followed by u (nqyae, etc.)
+                    sl = sig.lower()
+                    if 'q' in sl:
+                        qi = sl.index('q')
+                        if qi + 1 >= len(sl) or sl[qi + 1] != 'u': return False
+                    # Reject strings with 3+ consecutive consonants (not English-shaped)
+                    vowels = set('aeiou')
+                    run = 0
+                    for c in sl:
+                        if c not in vowels: run += 1
+                        else: run = 0
+                        if run > 3: return False
+                    return True
+
+                # Receive this breath's remainder into the circuit
+                if remainder_obj:
+                    accepted = self._circuit.receive(remainder_obj)
+                    if not accepted or self._circuit.is_overflowing():
+                        # Overflow: spine is full and the circuit can't hold more
+                        # Release the oldest carries — convergence event
+                        released = self._circuit.reset()
+                        # The oldest released remainder seeds the next carry
+                        if released:
+                            sig = released[0].signal
+                            if _carry_gate(sig): self.carry = sig
+                    else:
+                        # T=1 accepted into circuit — carry is the remainder signal
+                        if _carry_gate(remainder_obj.signal): self.carry = remainder_obj.signal
+                elif resonant_carry:
+                    if _carry_gate(resonant_carry.signal): self.carry = resonant_carry.signal
+                else:
+                    # No T=1 this breath — fall back to longest surviving signal noun
+                    _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
+                    _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
+                             'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
+                    for _word in _carry_candidate:
+                        if len(_word) >= 4 and _word not in _skip:
+                            self.carry = _word; break
+
+            except Exception:
+                # If circuit fails, fall back to simple carry
+                _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
+                _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
+                         'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
+                for _word in _carry_candidate:
+                    if len(_word) >= 4 and _word not in _skip:
+                        self.carry = _word; break
+        else:
+            # No circuit — simple carry
+            _carry_candidate = sorted(signal_nouns, key=len, reverse=True)
+            _skip = {'what', 'does', 'that', 'this', 'with', 'from', 'have',
+                     'when', 'then', 'than', 'hold', 'holds', 'into', 'only'}
+            for _word in _carry_candidate:
+                if len(_word) >= 4 and _word not in _skip:
+                    self.carry = _word; break
 
         # Session AND accumulation
         if self.session_nouns is None:
@@ -758,14 +1638,22 @@ def _log_event(source, position, remainder, resonant, tension,
 def _broadcast_sync(evt):
     """Called from event loop thread \u2014 schedule coroutine for each client."""
     msg = json.dumps({"type": "event", "data": evt})
-    dead = []
-    for ws in list(_ws_clients):
-        try:
-            asyncio.ensure_future(ws.send_text(msg))
-        except Exception:
-            dead.append(ws)
-    for ws in dead:
-        if ws in _ws_clients: _ws_clients.remove(ws)
+
+    async def _send_all():
+        dead = []
+        for ws in list(_ws_clients):
+            try:
+                await ws.send_text(msg)
+            except (WebSocketDisconnect, ClientDisconnected, Exception):
+                dead.append(ws)
+        for ws in dead:
+            if ws in _ws_clients:
+                _ws_clients.remove(ws)
+
+    if _loop and _loop.is_running():
+        asyncio.run_coroutine_threadsafe(_send_all(), _loop)
+    else:
+        asyncio.ensure_future(_send_all())
 
 
 def get_session() -> Session:
@@ -786,10 +1674,96 @@ def get_session() -> Session:
     return _session
 
 
+_MEMORY_PATH = _HERE / "ohai_memory.json"
+_HARP_STATE: dict = {}   # latest Vibe Harp gate-fire event
+
+def _broadcast_spore(spore: dict):
+    """Send ∿ to all peer nodes — Toffoli third wire crossing the network.
+    Each node receives and integrates or holds per Stone's Law (0≠1).
+    Fire-and-forget: failures are silent, same as any failed oracle.
+    """
+    payload = json.dumps(spore, ensure_ascii=False).encode()
+    for node in _NODES:
+        try:
+            url = node.get("url", "").rstrip("/") + "/spore"
+            req = urllib.request.Request(
+                url, data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            urllib.request.urlopen(req, timeout=10)
+        except Exception:
+            pass  # node unreachable — silence, not crash
+
+def _save_memory():
+    """Persist the association index, noise map, and spore archive to disk.
+    Called after each spore event and on graceful shutdown.
+    The _assoc decay mechanism means this self-prunes over time —
+    associations that aren't reinforced across sessions will fade naturally.
+    """
+    session = get_session()
+    try:
+        data = {
+            "saved_at":        time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "exchange":        session.exchange,
+            "assoc":           session._assoc,
+            "oracle_freq":     session._oracle_freq,
+            "spores":          session._spores,
+            # Drawing spines — persist across restarts
+            "draw_color_spine": session.draw_color_spine,
+            "draw_geo_spine":   session.draw_geo_spine,
+            "draw_chord_spine": session.draw_chord_spine,
+            "draw_exchange":    session._draw_exchange,
+        }
+        _MEMORY_PATH.write_text(
+            json.dumps(data, ensure_ascii=False, separators=(',', ':')),
+            encoding='utf-8'
+        )
+    except Exception as e:
+        print(f"  memory save failed: {e}")
+
+def _load_memory():
+    """Load persisted memory into the current session on startup.
+    Applies one round of decay to acknowledge time passed since last save.
+    """
+    if not _MEMORY_PATH.exists():
+        return
+    session = get_session()
+    try:
+        data = json.loads(_MEMORY_PATH.read_text(encoding='utf-8'))
+        assoc = data.get("assoc", {})
+        # One decay pass — we don't know how long the server was down
+        assoc = {w: {co: max(1, c // 2) for co, c in pairs.items()}
+                 for w, pairs in assoc.items() if pairs}
+        session._assoc        = assoc
+        session._oracle_freq  = {w: max(1, c // 2)
+                                 for w, c in data.get("oracle_freq", {}).items()}
+        session._spores       = data.get("spores", [])[-12:]
+        session._last_spore_depth = 0
+        # Drawing spines — restore without decay (frequency is categorical, not temporal)
+        session.draw_color_spine = data.get("draw_color_spine", {})
+        session.draw_geo_spine   = data.get("draw_geo_spine", [])
+        session.draw_chord_spine = data.get("draw_chord_spine", [])
+        session._draw_exchange   = data.get("draw_exchange", 0)
+        print(f"  memory loaded: {len(session._assoc)} assoc pairs, "
+              f"{len(session._spores)} spores, "
+              f"{len(session.draw_color_spine)} draw colors, "
+              f"{len(session.draw_geo_spine)} geo ops  [{data.get('saved_at','?')}]")
+    except Exception as e:
+        print(f"  memory load failed: {e}")
+
 @asynccontextmanager
 async def lifespan(app):
     global _loop
     _loop = asyncio.get_event_loop()
+    # Suppress Windows ProactorEventLoop ConnectionResetError noise.
+    # Clients closing tabs abruptly cause WinError 10054 — cosmetic, not a crash.
+    def _quiet_connection_errors(loop, context):
+        exc = context.get('exception')
+        if isinstance(exc, (ConnectionResetError, BrokenPipeError)):
+            return
+        loop.default_exception_handler(context)
+    _loop.set_exception_handler(_quiet_connection_errors)
     print("\nohai~ - local server")
     print("-" * 40)
     try:
@@ -797,8 +1771,12 @@ async def lifespan(app):
     except RuntimeError as e:
         print(f"  WARN: {e}")
         print("  server running but session not loaded - fix files and restart")
+    _load_memory()
     print(f"\n  open: http://localhost:7700\n")
     yield
+    # Graceful shutdown — save whatever was accumulated this session
+    _save_memory()
+    print("  memory saved.")
 
 app = FastAPI(title="ohai~", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
@@ -815,6 +1793,13 @@ class VagusSignal(BaseModel):
     role: str = "CALL"
     remainder: str = ""
     energy: float = 0.0
+
+class HarpSignal(BaseModel):
+    notes: list = []            # active notes at gate fire, e.g. ["B","D","F"]
+    spoke_activity: dict = {}   # {note: 0.0-1.0} tension level per spoke
+    band_energy: dict = {}      # {band_name: 0.0-1.0}
+    theremin_freq: float = 0.0  # Hz of armonica stone, 0 if absent
+    velocity: float = 0.5       # gate fire velocity
 
 class LessonAdd(BaseModel):
     name: str
@@ -929,6 +1914,81 @@ def _format_reply(remainder, ste_out, position, resonant,
     return "\n".join(lines)
 
 
+async def _realize_reply(
+    remainder: str,
+    position:  str,
+    resonant:  list,
+    tension:   int,
+    matador:   bool,
+    liminal:   bool,
+    has_g:     bool,
+) -> str:
+    """
+    Async surface realization wrapper.
+
+    Extracts the signal from the oracle remainder, pulls live session state
+    (spine, carry, assoc, top law fragment), and hands everything to
+    surface.realize_async() for fluent English generation.
+
+    Falls back to _format_reply() if surface.py is unavailable.
+    """
+    # Silence paths are handled identically to _format_reply
+    if remainder in ("<silence>", "<overflow:silence>") or \
+       remainder.startswith("<silence:"):
+        return "..."
+
+    if not _SURFACE_OK:
+        return _format_reply(remainder, "", position, resonant,
+                             tension, matador, liminal, has_g)
+
+    # Extract the raw signal word (strip T=1 wrapper if present)
+    m      = re.match(r"T=1:([^#]+)#", remainder)
+    signal = m.group(1).strip() if m else remainder
+
+    # Pull live session state
+    try:
+        session = get_session()
+        spine   = sorted(session.spine_nouns)
+        carry   = session.carry or ""
+        assoc   = session._assoc
+    except Exception:
+        spine, carry, assoc = [], "", {}
+
+    # Extract top non-dominant law fragment (same logic as _format_reply)
+    law = ""
+    if resonant and position in ('C', 'D', 'E', 'F', 'G'):
+        dominant = {l for l, _ in sorted(
+            getattr(session, '_law_freq', {}).items(),
+            key=lambda x: x[1], reverse=True
+        )[:3]}
+        preferred = [l for l in resonant[:3] if l not in dominant] or resonant[:3]
+        for l in preferred:
+            frag = LAW_VOICE.get(l)
+            if frag:
+                law = frag
+                break
+
+    try:
+        return await _surface.realize_async(
+            signal=signal,
+            spine=spine,
+            carry=carry,
+            assoc=assoc,
+            position=position,
+            law=law,
+            tension=tension,
+            matador=matador,
+            has_g=has_g,
+            liminal=liminal,
+            use_network=_SURFACE_NETWORK,
+            score_timeout=_SURFACE_TIMEOUT,
+        )
+    except Exception:
+        # Never crash the server over a surface realization failure
+        return _format_reply(remainder, "", position, resonant,
+                             tension, matador, liminal, has_g)
+
+
 def _run_breath(text: str, source: str = "user"):
     """Core breath: run session.breathe + constitution read. Returns result dict."""
     session = get_session()
@@ -985,7 +2045,8 @@ async def breathe(req: BreatheRequest):
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    result = _run_breath(text)
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _run_breath, text)
     remainder = result.get("remainder", "<silence>")
     position  = result.get("position", "C")
     resonant  = result.get("resonant_laws", [])
@@ -993,10 +2054,9 @@ async def breathe(req: BreatheRequest):
     momentum  = result.get("momentum", "holding")
     convergence = session.convergence_depth
 
-    reply = _format_reply(
-        remainder=remainder, ste_out=result.get("ste", ""),
-        position=position, resonant=resonant, tension=tension,
-        matador=result.get("matador", False),
+    reply = await _realize_reply(
+        remainder=remainder, position=position, resonant=resonant,
+        tension=tension, matador=result.get("matador", False),
         liminal=result.get("liminal", False),
         has_g=result.get("has_touched_g", False),
     )
@@ -1020,6 +2080,7 @@ async def breathe(req: BreatheRequest):
         "lessons":   [{"name": l["name"], "signal": l["signal"],
                        "polarity_needed": l.get("polarity_needed", "")}
                       for l in surfaced_lessons],
+        "spore":     session._spores[-1] if session._spores else None,
     })
 
 
@@ -1033,8 +2094,42 @@ async def vagus(signal: VagusSignal):
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+    # ── HelicalCell admit gate ───────────────────────────────────────────────
+    # The cell only admits a vagus signal if it differs from what it holds.
+    # Violation = Trio is repeating itself without new information.
+    # T=1 remainder from the cell = this signal carried something genuinely new.
+    cell_violation = False
+    cell_remainder = False
+    if session._vagus_cell is not None:
+        try:
+            # Signal bit: does this text produce new nouns vs the current spine?
+            incoming_nouns, _, _ = ste(text)
+            overlap = len(incoming_nouns & session.spine_nouns)
+            signal_bit = overlap < len(incoming_nouns)  # True if bringing something new
+            admit_bit = signal_bit != session._vagus_cell.potential  # different from last
+            out = session._vagus_cell.breath_cycle(signal_bit, admit_bit)
+            cell_violation = session._vagus_cell.violation
+            cell_remainder = session._vagus_cell.remainder
+            if cell_violation:
+                # Trio is sending what the system already holds — return briefing, no breath
+                arc = session.spine_arc()
+                return JSONResponse({
+                    "remainder": "<silence:violation>",
+                    "source": "vagus",
+                    "violation": True,
+                    "message": "signal unchanged — pull /trio for updated constellation",
+                    "next": {
+                        "vocab":  arc.get("nouns", []) + ([arc.get("carry")] if arc.get("carry") else []),
+                        "carry":  arc.get("carry", ""),
+                        "depth":  len(arc.get("nouns", [])),
+                    }
+                })
+        except Exception:
+            pass
+
     tagged = f"[vagus:{signal.voice}@{signal.note}] {text}"
-    result = _run_breath(tagged)
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _run_breath, tagged)
 
     remainder = result.get("remainder", "<silence>")
     position  = result.get("position", "C")
@@ -1042,10 +2137,9 @@ async def vagus(signal: VagusSignal):
     tension   = result.get("tension", 0)
     convergence = session.convergence_depth
 
-    reply = _format_reply(
-        remainder=remainder, ste_out=result.get("ste", ""),
-        position=position, resonant=resonant, tension=tension,
-        matador=result.get("matador", False),
+    reply = await _realize_reply(
+        remainder=remainder, position=position, resonant=resonant,
+        tension=tension, matador=result.get("matador", False),
         liminal=result.get("liminal", False),
         has_g=result.get("has_touched_g", False),
     )
@@ -1071,6 +2165,9 @@ async def vagus(signal: VagusSignal):
                 seen.add(key)
                 next_pairs.append([word, co])
 
+    # Circuit state — T=1 carry count, moss, overflow
+    circuit_state = session._circuit.state() if hasattr(session, '_circuit') else {}
+
     return JSONResponse({
         "remainder": remainder, "reply": reply, "position": position,
         "resonant": resonant[:2], "tension": tension,
@@ -1078,9 +2175,17 @@ async def vagus(signal: VagusSignal):
         "source": "vagus", "convergence": convergence,
         "crystal": {"text": signal.text, "note": signal.note,
                     "voice": signal.voice, "role": signal.role, "energy": signal.energy},
+        # T=1 status from the admit gate
+        "t1": {
+            "remainder": cell_remainder,   # True = this signal carried something new
+            "violation": cell_violation,   # True = signal unchanged (should have been caught above)
+            "circuit":   circuit_state,    # carry_count, moss_count, overflowing
+        },
         # Next constellation — Trio uses this to tune the next crystallization cycle
         "next": {
             "vocab":  next_vocab,
+            "nouns":  spine,
+            "verbs":  list(arc.get("verbs", [])),
             "pairs":  next_pairs[:6],
             "carry":  carry_word,
             "depth":  len(spine),
@@ -1104,6 +2209,455 @@ async def state():
 @app.get("/events")
 async def events():
     return JSONResponse(list(reversed(_events)))
+
+
+@app.get("/spores")
+async def spores():
+    """
+    Crystallized domain locks — sporulation archive.
+    Each spore is a compressed snapshot of a depth-7 convergence event:
+    spine, association pairs, carry, resonant laws.
+    These are the seeds the mycelium left behind.
+    """
+    try:
+        session = get_session()
+        return JSONResponse({
+            "spores": list(reversed(session._spores)),
+            "count":  len(session._spores),
+        })
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/render")
+async def render():
+    """
+    Paint the current field.
+
+    Translates active spine words + current carry into emoji anchors,
+    then looks up each anchor's wavelength descriptor.
+
+    Returns:
+      - frames: ordered list of {word, emoji, wavelength} — the canvas
+      - chord:  all emojis concatenated — the stacked frequency
+      - carry:  the current carry word/symbol
+      - sentence: human-readable paint instruction
+
+    Stack = chord. Sequence = sentence. No art ingested. 0≠1.
+    """
+    try:
+        session = get_session()
+        arc = session.spine_arc()
+        words = sorted(session.spine_nouns)
+        if session.carry:
+            words.append(session.carry)
+
+        frames = []
+        unstable = []
+        for word in words:
+            anchor = _translate_octopus(word)
+            wl     = _WAVELENGTH.get(anchor, {})
+            stable = _solo_stable(anchor)
+            if not stable:
+                unstable.append(word)
+            frames.append({
+                "word":        word,
+                "emoji":       anchor,
+                "wavelength":  wl,
+                "solo_stable": stable,
+            })
+
+        chord    = "".join(f["emoji"] for f in frames)
+        # Build a plain-language paint sentence from the sequence
+        parts = []
+        for f in frames:
+            wl = f["wavelength"]
+            stable_marker = "" if f["solo_stable"] else " ⚠️0=1_by_peer"
+            if wl:
+                parts.append(
+                    f"{f['emoji']} {wl.get('hex','?')} {wl.get('vector','?')} "
+                    f"{wl.get('ms','?')}ms {wl.get('shape','?')}{stable_marker}"
+                )
+            else:
+                parts.append(f"{f['emoji']} (unmapped){stable_marker}")
+
+        return JSONResponse({
+            "carry":      session.carry or "",
+            "chord":      chord,
+            "frames":     frames,
+            "sentence":   " → ".join(parts),
+            "exchange":   arc["exchange"],
+            "convergence": arc["convergence"],
+            "unstable":   unstable,   # words that need 👥 to hold
+            "field_stable": len(unstable) == 0,
+        })
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════
+# IMAGE ARC TOPOLOGY ANALYSIS
+# ══════════════════════════════════════════════════════
+#
+# Derives an emoji chord from an image using contrast arc analysis.
+#
+# Technique adapted from SIGGRAPH shadow-ridge work (facial aging via
+# shadow depth enhancement along ridge arcs).  We read it in reverse:
+# instead of enhancing ridges, we READ the ridge topology to describe
+# an image as a chord of geometric + color vectors from _WAVELENGTH.
+#
+# Two spines extracted:
+#   Color spine  — quantize(8) dominant colors → nearest _WL_RGB entry
+#   Arc spine    — FIND_EDGES spatial distribution → vector descriptor
+#                  Sobel X vs Y → dominant orientation
+#                  3×3 grid density → radiate / absorb / scatter / orbit
+#
+# Together they form a topological landmark map:
+# each emoji = a ridge shape + color at a particular spatial frequency.
+# No LLM.  No model call.  Pillow only.
+
+def _analyze_image_arcs(raw: bytes) -> str:
+    """
+    Derive an emoji chord from image bytes via contrast arc topology.
+    Returns a 4-7 char emoji string, or "" if Pillow is unavailable.
+    """
+    try:
+        from PIL import Image, ImageFilter
+        import io as _io
+    except ImportError:
+        return ""
+
+    SIZE = 128
+
+    try:
+        img = Image.open(_io.BytesIO(raw)).convert('RGB')
+        img = img.resize((SIZE, SIZE), Image.LANCZOS
+                         if hasattr(Image, 'LANCZOS') else Image.ANTIALIAS)
+    except Exception:
+        return ""
+
+    chord_emojis: list[str] = []
+    seen: set[str] = set()
+
+    def _add(e: str):
+        if e and e not in seen:
+            seen.add(e)
+            chord_emojis.append(e)
+
+    # ── 1. Color spine ────────────────────────────────────────────────────
+    # Quantize to 8 dominant colors; map each to the nearest _WAVELENGTH
+    # entry by RGB Euclidean distance.  Skip near-neutral grays — they
+    # carry no color signal.  Prefer the most frequent colors first.
+    try:
+        q      = img.quantize(colors=8)
+        pal    = q.getpalette()     # flat [R,G,B, R,G,B, ...] × 256
+        counts = q.histogram()
+        total  = SIZE * SIZE
+        ranked = sorted(range(8), key=lambda i: counts[i], reverse=True)
+
+        for idx in ranked[:5]:
+            if counts[idx] < total * 0.04:
+                continue
+            r, g, b = pal[idx*3], pal[idx*3+1], pal[idx*3+2]
+            # Skip near-neutral (low saturation) — not useful as color signal
+            if max(r, g, b) - min(r, g, b) < 18:
+                continue
+            # Find nearest _WAVELENGTH entry by squared RGB distance.
+            # Prefer single-char emoji over compound keys when distance is
+            # similar — compound keys (🫙🫐, 🌑👁️) share hex values with
+            # single-char equivalents and are noisier in output.
+            best_e, best_d = None, float('inf')
+            for e, wr, wg, wb in _WL_RGB:
+                d = (r-wr)**2 + (g-wg)**2 + (b-wb)**2
+                # Penalty: 400 per extra character (≈20 in Euclidean terms)
+                d += (len(e) - 1) * 400
+                if d < best_d:
+                    best_d, best_e = d, e
+            # Accept if within reasonable distance (≈85 Euclidean + char penalty)
+            if best_e and best_d < 7200:
+                _add(best_e)
+            if len(chord_emojis) >= 3:
+                break
+    except Exception:
+        pass
+
+    # ── 2. Arc / gradient topology spine ─────────────────────────────────
+    # Apply FIND_EDGES to get the contrast arc map (bright = ridge).
+    # Analyse the 3×3 spatial grid to detect dominant arc geometry.
+    # Also run Sobel X vs Y to get dominant edge orientation.
+    try:
+        gray     = img.convert('L')
+        edge_img = gray.filter(ImageFilter.FIND_EDGES)
+        pixels   = list(edge_img.getdata())     # 0-255 per pixel, len = SIZE²
+
+        # 3×3 grid sums
+        T = SIZE // 3
+        def gsum(x0, y0, x1, y1):
+            s = 0
+            for y in range(y0, min(y1, SIZE)):
+                row_off = y * SIZE
+                for x in range(x0, min(x1, SIZE)):
+                    s += pixels[row_off + x]
+            return s
+
+        tl = gsum(0,   0,   T,      T)
+        tc = gsum(T,   0,   2*T,    T)
+        tr = gsum(2*T, 0,   SIZE,   T)
+        ml = gsum(0,   T,   T,      2*T)
+        mc = gsum(T,   T,   2*T,    2*T)
+        mr = gsum(2*T, T,   SIZE,   2*T)
+        bl = gsum(0,   2*T, T,      SIZE)
+        bc = gsum(T,   2*T, 2*T,    SIZE)
+        br = gsum(2*T, 2*T, SIZE,   SIZE)
+
+        total_e = tl+tc+tr+ml+mc+mr+bl+bc+br
+        if total_e == 0:
+            _add('🧘')   # no edges = stillness
+        else:
+            # Normalised region weights
+            top_w    = (tl + tc + tr) / total_e
+            bot_w    = (bl + bc + br) / total_e
+            left_w   = (tl + ml + bl) / total_e
+            right_w  = (tr + mr + br) / total_e
+            center_w = mc / total_e
+            corner_w = (tl + tr + bl + br) / total_e
+            ring_w   = 1.0 - center_w   # edge ring vs centre
+            density  = total_e / (SIZE * SIZE * 255)
+
+            # Density → busy vs calm
+            if density > 0.35:
+                _add('✨')      # high density = scatter
+            elif density < 0.06:
+                _add('🧘')     # very low = stillness
+
+            # Center dominance → orbit / absorb
+            if center_w > 0.14:
+                _add('🌀')     # strong centre = spiral attractor
+            elif center_w < 0.04 and ring_w > 0.92:
+                _add('◯')      # open boundary
+
+            # Vertical asymmetry → up / down vector
+            v_asym = top_w - bot_w
+            if v_asym > 0.08:
+                _add('🕊️')    # top-heavy = upward drift
+            elif v_asym < -0.08:
+                _add('🌧️')    # bottom-heavy = downward flow
+
+            # Horizontal symmetry + vertical symmetry → radial / circular
+            if abs(left_w - right_w) < 0.04 and abs(top_w - bot_w) < 0.04:
+                _add('🔁')     # symmetric = circular pattern
+
+            # Corners dominant → faceted / catch-light
+            if corner_w > 0.48:
+                _add('◈')      # faceted
+
+            # Centre column + mid row dominant → radiate
+            ccol = (tc + mc + bc) / total_e
+            mrow = (ml + mc + mr) / total_e
+            if ccol > 0.37 and mrow > 0.37:
+                _add('💡')     # radiate from centre
+
+        # ── Sobel orientation: horizontal vs vertical edge dominance ──────
+        # Sobel X detects vertical edges (horizontal gradient).
+        # Sobel Y detects horizontal edges (vertical gradient).
+        # Comparing their sums gives dominant arc orientation.
+        try:
+            sx_kernel = (-1, 0, 1, -2, 0, 2, -1, 0, 1)
+            sy_kernel = (-1, -2, -1, 0, 0, 0, 1, 2, 1)
+            gx = gray.filter(ImageFilter.Kernel(3, sx_kernel, scale=4, offset=128))
+            gy = gray.filter(ImageFilter.Kernel(3, sy_kernel, scale=4, offset=128))
+            gx_sum = sum(gx.getdata())
+            gy_sum = sum(gy.getdata())
+            # Remove DC offset (128 × SIZE²)
+            dc = 128 * SIZE * SIZE
+            gx_energy = abs(gx_sum - dc)
+            gy_energy = abs(gy_sum - dc)
+            ratio = gx_energy / (gy_energy + 1)
+            if ratio > 1.4:
+                _add('♾️')    # horizontal loop — lateral arcs dominate
+            elif ratio < 0.7:
+                _add('⧖')     # vertical grain — vertical arcs dominate
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+
+    # Return chord: at most 6 emojis, colour first then geometry
+    return "".join(chord_emojis[:6])
+
+
+class DrawAnalyzeRequest(BaseModel):
+    image:    str = ""    # base64-encoded image bytes
+    filename: str = ""
+
+
+@app.post("/draw/analyze")
+async def draw_analyze(body: DrawAnalyzeRequest):
+    """
+    Derive an emoji chord from an image using contrast arc topology.
+
+    No LLM. No model call.
+    Reads contrast ridge distribution (SIGGRAPH shadow-arc technique,
+    reversed) + dominant color mapping against _WAVELENGTH.
+
+    Input:  { "image": "<base64>", "filename": "..." }
+    Output: { "chord": "🌀✨🌌◈", "method": "arc_topology",
+              "colors": [...], "vectors": [...] }
+
+    If Pillow is not installed, returns { "chord": "", "method": "pillow_unavailable" }.
+    """
+    if not body.image:
+        return JSONResponse({"chord": "", "method": "no_input"})
+
+    loop = asyncio.get_event_loop()
+    try:
+        raw = base64.b64decode(body.image)
+    except Exception:
+        return JSONResponse({"chord": "", "method": "decode_error"})
+
+    chord = await loop.run_in_executor(None, _analyze_image_arcs, raw)
+    method = "arc_topology" if chord else "pillow_unavailable"
+
+    # Annotate the chord with what was found
+    colors  = []
+    vectors = []
+    for e in chord:
+        wl = _WAVELENGTH.get(e, {})
+        if wl.get('hex'):  colors.append(wl['hex'])
+        if wl.get('vector') and wl['vector'] != 'none':
+            vectors.append(wl['vector'])
+
+    return JSONResponse({
+        "chord":   chord,
+        "method":  method,
+        "colors":  list(dict.fromkeys(colors)),    # ordered, deduplicated
+        "vectors": list(dict.fromkeys(vectors)),
+        "filename": body.filename,
+    })
+
+
+# ══════════════════════════════════════════════════════
+# DRAWING SKILL — parallel spines, no vocabulary
+# ══════════════════════════════════════════════════════
+
+class DrawBreath(BaseModel):
+    text: str = ""
+
+
+@app.post("/draw/breathe")
+async def draw_breathe(body: DrawBreath):
+    """
+    Drawing ingestion — emoji chord → three drawing spines.
+
+    Accepts any text that contains emoji. Non-emoji content is ignored.
+    Updates:
+      - draw_color_spine  (hex co-occurrence + aging)
+      - draw_geo_spine    (subtractive/compositional ops from adjacency)
+      - draw_chord_spine  (stabilized chord sequences)
+
+    No words. No oracle. No vocabulary spine. 0≠1.
+    """
+    text = body.text.strip()
+    if not text:
+        return JSONResponse({"status": "silence", "draw_exchange": 0})
+    try:
+        session = get_session()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    result = _ingest_draw_chord(session, text)
+    arc    = session.draw_arc()
+
+    return JSONResponse({
+        "status":        "ingested" if result["changed"] else "no_emojis",
+        "emojis":        result["emojis"],
+        "chord":         result.get("chord", ""),
+        "colors":        result.get("colors", []),
+        "new_ops":       result.get("new_ops", []),
+        "draw_exchange": session._draw_exchange,
+        "arc":           arc,
+    })
+
+
+@app.get("/draw/render")
+async def draw_render():
+    """
+    Render the current drawing field from the three drawing spines.
+
+    Palette — dominant colors sorted by total co-occurrence weight.
+    Operations — top geometric rules learned from emoji adjacency.
+    Chord — the most-repeated stabilized chord sequence.
+
+    Returns a drawing_sentence: human-readable paint instruction
+    built from hex values, vectors, and named operations.
+
+    No art ingested. No words. 0≠1.
+    """
+    try:
+        session = get_session()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # ── Palette — sort by total co-occurrence weight ──────────────────────
+    palette = sorted(
+        [
+            {
+                "hex":    h,
+                "emoji":  v["emoji"],
+                "vector": v["vector"],
+                "shape":  v["shape"],
+                "weight": sum(v["assoc"].values()) if v["assoc"] else 0,
+                "top_assoc": sorted(v["assoc"].items(),
+                                    key=lambda x: x[1], reverse=True)[:3],
+            }
+            for h, v in session.draw_color_spine.items()
+        ],
+        key=lambda x: x["weight"],
+        reverse=True
+    )
+
+    # ── Operations — top by frequency ────────────────────────────────────
+    operations = sorted(
+        session.draw_geo_spine, key=lambda r: r["count"], reverse=True
+    )[:8]
+
+    # ── Dominant chord — most repeated ───────────────────────────────────
+    top_chord = None
+    if session.draw_chord_spine:
+        top_chord = max(session.draw_chord_spine, key=lambda c: c["count"])
+
+    # ── Drawing sentence ──────────────────────────────────────────────────
+    color_parts = []
+    for p in palette[:4]:
+        partners = " + ".join(h for h, _ in p["top_assoc"])
+        color_parts.append(
+            f"{p['emoji']} {p['hex']} {p['vector']}"
+            + (f" [{partners}]" if partners else "")
+        )
+
+    op_parts = [
+        f"{r['a']}→{r['op']}→{r['b']}"
+        for r in operations[:4]
+    ]
+
+    drawing_sentence = " | ".join(color_parts)
+    if op_parts:
+        drawing_sentence += "  ::  " + "  ".join(op_parts)
+
+    return JSONResponse({
+        "palette":          palette,
+        "operations":       operations,
+        "chord":            top_chord,
+        "all_chords":       sorted(session.draw_chord_spine,
+                                   key=lambda c: c["count"], reverse=True),
+        "drawing_sentence": drawing_sentence or "(no drawing data yet)",
+        "draw_exchange":    session._draw_exchange,
+        "field_ready":      len(palette) > 0 and len(operations) > 0,
+        "color_count":      len(session.draw_color_spine),
+        "geo_count":        len(session.draw_geo_spine),
+        "chord_count":      len(session.draw_chord_spine),
+    })
 
 
 @app.get("/trio")
@@ -1194,6 +2748,110 @@ async def trio_briefing():
     })
 
 
+# Musical note → oracle breathe terms
+# Each note's cosmological register becomes the seed for the oracle query.
+# The theremin lives between notes — its frequency resolves toward the nearest.
+_HARP_NOTE_TERMS = {
+    'A': 'ground rest landing safe',
+    'B': 'burn ignition heat threshold',
+    'C': 'friction stability hold',
+    'D': 'threshold crossing edge',
+    'E': 'pull descent begins current',
+    'F': 'whirlpool deep current',
+    'G': 'grace release open',
+}
+
+@app.post("/harp")
+async def harp_event(signal: HarpSignal):
+    """
+    Vibe Harp gate-fire event — musical tension resolved.
+
+    Active notes (A-G) are translated into oracle breathe terms via their
+    cosmological register. The oracle processes them as it would any breathe,
+    building the spine from the musical field rather than from text input.
+
+    The Trio listens for these events and pulls updated vocab to replace
+    its static WORD_FIELD phrases.
+    """
+    global _HARP_STATE
+    _HARP_STATE = {**signal.dict(), "timestamp": time.time()}
+
+    if not signal.notes:
+        return JSONResponse({"status": "silence", "notes": []})
+
+    try:
+        session = get_session()
+    except RuntimeError as e:
+        return JSONResponse({"status": "no_session", "detail": str(e)})
+
+    # Translate active notes into oracle terms — high-tension notes contribute more
+    terms: list[str] = []
+    for note in signal.notes:
+        act = signal.spoke_activity.get(note, 0.5)
+        reg = _HARP_NOTE_TERMS.get(note, '')
+        if reg:
+            # Weight: high-activity notes contribute all terms; low-activity notes contribute one
+            words = reg.split()
+            terms.extend(words if act > 0.4 else words[:1])
+
+    # Theremin adds a pitch-register hint
+    if signal.theremin_freq > 0:
+        f = signal.theremin_freq
+        if   f < 200: terms.append('sub')
+        elif f < 300: terms.append('low')
+        elif f < 440: terms.append('middle')
+        elif f < 660: terms.append('high')
+        else:         terms.append('aerial')
+
+    if not terms:
+        return JSONResponse({"status": "no_terms"})
+
+    harp_text = ' '.join(dict.fromkeys(terms))  # deduplicate, preserve order
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None, _run_breath,
+        f"[harp:{','.join(signal.notes)}] {harp_text}"
+    )
+
+    remainder   = result.get("remainder", "<silence>")
+    position    = result.get("position", "C")
+    resonant    = result.get("resonant_laws", [])
+    tension     = result.get("tension", 0)
+    convergence = session.convergence_depth
+
+    _log_event("harp", position, remainder, resonant, tension,
+               result.get("momentum", "holding"), signal.velocity, convergence)
+
+    arc  = session.spine_arc()
+    spine = arc.get("nouns", [])
+    vocab = list(set(
+        spine +
+        ([arc.get("carry")] if arc.get("carry") else []) +
+        list(arc.get("verbs", []))
+    ))
+
+    return JSONResponse({
+        "remainder":   remainder,
+        "position":    position,
+        "notes":       signal.notes,
+        "tension":     tension,
+        "convergence": convergence,
+        "next": {
+            "vocab": vocab,
+            "nouns": spine,
+            "verbs": list(arc.get("verbs", [])),
+            "carry": arc.get("carry", ""),
+            "depth": len(spine),
+        },
+    })
+
+
+@app.get("/harp/state")
+async def harp_state():
+    """Latest Vibe Harp gate-fire state — Trio polls this to sync with musical field."""
+    return JSONResponse(_HARP_STATE or {"status": "no_harp_data"})
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
@@ -1225,7 +2883,12 @@ async def websocket_endpoint(ws: WebSocket):
     except (WebSocketDisconnect, Exception):
         pass
     finally:
-        if ws in _ws_clients: _ws_clients.remove(ws)
+        if ws in _ws_clients:
+            _ws_clients.remove(ws)
+        try:
+            await ws.close()
+        except Exception:
+            pass
 
 
 @app.get("/lessons")
@@ -1265,6 +2928,46 @@ async def promote_lesson(name: str):
     return JSONResponse({"status": "promoted", "name": name, "lesson": promoted})
 
 
+@app.post("/spore")
+async def receive_spore(request: Request):
+    """∿ endpoint — receive a spore from a peer node.
+    Toffoli integration: local state (A,B) unchanged.
+    Only the carry (C) is influenced by the incoming spore.
+    Stone's Law check: if spore bud == local spine, no-op (0=1 avoided).
+    """
+    try:
+        spore = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid spore payload")
+
+    session = get_session()
+    incoming_bud = set(spore.get("bud", []))
+    incoming_carry = spore.get("carry", "")
+
+    # Stone's Law: if incoming bud is already fully present in local spine, hold
+    if incoming_bud and incoming_bud.issubset(session.spine_nouns):
+        return JSONResponse({"status": "held", "reason": "0≠1 — already integrated"})
+
+    # Toffoli integration — seed _assoc with incoming pairs, leave spine intact
+    for pair in spore.get("pairs", []):
+        if len(pair) == 2:
+            a, b = pair
+            if a and b and a != b:
+                if a not in session._assoc: session._assoc[a] = {}
+                session._assoc[a][b] = session._assoc[a].get(b, 0) + 1
+
+    # Log the crossing
+    _log_event("spore_in", "∿", incoming_carry,
+               [], 0, "carrying",
+               convergence=session.convergence_depth)
+
+    return JSONResponse({
+        "status": "integrated",
+        "bud": sorted(incoming_bud),
+        "carry": incoming_carry,
+    })
+
+
 @app.post("/reset")
 async def reset():
     global _session
@@ -1277,5 +2980,6 @@ async def reset():
 
 
 if __name__ == "__main__":
-    uvicorn.run("ohai_server:app", host="127.0.0.1", port=7700,
+    _port = _cfg("port", 7700)
+    uvicorn.run("ohai_server:app", host="127.0.0.1", port=_port,
                 reload=False, log_level="warning")

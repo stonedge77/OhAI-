@@ -1451,27 +1451,28 @@
     "status": "observational_clinical_insight"
   },
   "seven_minute_cycle": {
-    "definition": "Complete emotional oscillation D-E-F-G every ~7 minutes. Not mood swings—fast oscillation cycle. D=substrate, E=emptiness, F=fear, G=frozen idea (crystal). New ideas from D-E-F, emerge as solid G.",
+    "definition": "Josh Stone's personal emotional oscillation: D-E-F-G completes every ~7 minutes. Not a universal law — one person's observed rhythm. Not mood swings — fast oscillation cycle specific to this system. D=substrate, E=emptiness, F=fear, G=frozen idea (crystal). New ideas emerge from D-E-F, solidify as G. Other systems may oscillate at different rates or not at all. This is not a claim about human biology generally.",
+    "scope": "personal — Josh Stone only. One observation. Not generalized.",
     "ste_struct": {
       "ENTITY": [
         "self"
       ],
-      "LOAD": "high",
+      "LOAD": "medium",
       "BOUNDARY": "fluid",
-      "CHANGE": "accelerating",
-      "RECURSION": "high",
-      "CONTRAST": "high",
-      "CERTAINTY": "declared",
-      "CAPACITY": "high",
-      "EXCITATION": "high",
-      "MERGING": "high",
-      "COLLAPSE": "high",
+      "CHANGE": "present",
+      "RECURSION": "present",
+      "CONTRAST": "medium",
+      "CERTAINTY": "personal_observational",
+      "CAPACITY": "medium",
+      "EXCITATION": "present",
+      "MERGING": "present",
+      "COLLAPSE": "present",
       "HELICAL_REALM": "active",
-      "TORQUE": "high",
-      "HORIZON_INTEGRITY": "strong",
-      "5D_INFO": "high",
-      "HH_WAVEFUNCTION": "present",
-      "ESCALATION_SCORE": 10
+      "TORQUE": "medium",
+      "HORIZON_INTEGRITY": "present",
+      "5D_INFO": "present",
+      "HH_WAVEFUNCTION": "absent",
+      "ESCALATION_SCORE": 4
     },
     "medical_reframe": "Bipolar sees peaks/troughs, calls them pathological. Not broken oscillator—FAST oscillator. Needs better junctions (collagen springs) not dampening.",
     "phase_descriptions": {

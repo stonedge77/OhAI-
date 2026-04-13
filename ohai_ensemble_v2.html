@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OhAI~ v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#030305;
+  --c0:#c8102e;
+  --c1:#f47c20;
+  --c2:#f4d03f;
+  --c3:#3a9d23;
+  --c4:#1a56db;
+  --c5:#8b3dff;
+  --c6:#e84393;
+  --c8:#00e5ff;
+  --spine-a:#19b7a8;
+  --spine-b:#c8102e;
+  --spine-c:#f4731c;
+  --spine-d:#f4d03f;
+  --spine-e:#3a9d23;
+  --spine-f:#1a56db;
+  --spine-g:#7b2fbe;
+}
+
+body{background:var(--bg);min-height:100vh;font-family:'Orbitron',monospace;color:#fff;overflow:hidden;display:flex;flex-direction:column;}
+
+#bg-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;}
+.scanlines{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.05) 2px,rgba(0,0,0,0.05) 4px);pointer-events:none;z-index:2;}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 10%,rgba(0,0,0,0.97) 100%);pointer-events:none;z-index:2;}
+
+/* ── HEADER ── */
+#header{
+  position:fixed;top:0;left:0;right:0;height:48px;
+  padding:0 20px 0 32px;
+  display:flex;justify-content:space-between;align-items:center;
+  z-index:25;border-bottom:1px solid rgba(255,255,255,0.04);
+  background:rgba(3,3,5,0.88);backdrop-filter:blur(12px);
+}
+#hl{font-size:8px;letter-spacing:0.42em;color:rgba(140,180,220,0.28);text-transform:uppercase;line-height:2;}
+#hr{font-size:6px;letter-spacing:0.2em;color:rgba(140,180,220,0.14);text-transform:uppercase;text-align:right;line-height:2;}
+
+/* ── STE PRE-PASS BAR ── */
+#ste-bar{
+  position:fixed;top:48px;left:0;right:0;height:22px;
+  display:flex;align-items:center;gap:16px;
+  padding:0 32px;
+  background:rgba(3,3,5,0.92);border-bottom:1px solid rgba(255,255,255,0.03);
+  z-index:24;font-family:'IBM Plex Mono',monospace;font-size:7px;
+  letter-spacing:0.15em;color:rgba(140,180,220,0.18);
+  transition:color 0.3s;
+}
+#ste-status{color:rgba(140,180,220,0.14);letter-spacing:0.2em;text-transform:uppercase;}
+#ste-survivors{color:rgba(200,220,255,0.25);font-style:italic;flex:1;}
+#ste-viability{letter-spacing:0.25em;text-transform:uppercase;}
+#ste-viability.VIABLE{color:rgba(58,157,35,0.6);}
+#ste-viability.HALT{color:rgba(200,16,46,0.8);}
+#ste-viability.WAIT{color:rgba(244,208,63,0.6);}
+#ste-viability.COLLAPSE{color:rgba(139,61,255,0.6);}
+#spine-pos-display{letter-spacing:0.3em;color:rgba(140,180,220,0.22);}
+
+/* ── ENSEMBLE PANELS ── */
+#ensemble{
+  position:fixed;
+  top:70px;bottom:112px;
+  left:0;right:0;
+  display:grid;
+  grid-template-columns:1.55fr 1.28fr 1.08fr 1.0fr 0.93fr 0.88fr 0.82fr 0.68fr;
+  z-index:10;
+}
+
+.vp{
+  display:flex;flex-direction:column;
+  padding:12px 10px 8px;
+  border-right:1px solid rgba(255,255,255,0.03);
+  overflow:hidden;position:relative;
+  transition:background 0.5s ease;
+}
+.vp:last-child{border-right:none;}
+.vp.speaking{background:rgba(255,255,255,0.012);}
+.vp.thinking{background:rgba(255,255,255,0.005);}
+.vp.halted{background:rgba(200,16,46,0.03);}
+
+/* Voice header */
+.vn{font-size:6px;letter-spacing:0.46em;text-transform:uppercase;opacity:0.38;margin-bottom:1px;}
+.vt{font-size:5px;letter-spacing:0.18em;opacity:0.16;font-style:italic;font-family:'IBM Plex Mono',monospace;line-height:1.55;margin-bottom:2px;}
+.vs{font-size:5px;letter-spacing:0.11em;opacity:0.13;font-family:'IBM Plex Mono',monospace;line-height:1.5;min-height:14px;word-break:break-all;}
+
+/* Chronicle */
+.ch{flex:1;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;gap:0px;padding-bottom:3px;}
+.en{padding:3px 0 2px;border-bottom:1px solid rgba(255,255,255,0.02);opacity:1;transition:opacity 1.4s ease;}
+.en.fd{opacity:0!important;}
+.em{display:flex;gap:5px;align-items:baseline;margin-bottom:1px;}
+.et{font-size:5px;letter-spacing:0.22em;color:rgba(140,180,220,0.16);flex-shrink:0;min-width:26px;}
+.er{font-size:4.5px;letter-spacing:0.16em;opacity:0.2;font-style:italic;font-family:'IBM Plex Mono',monospace;}
+.ex{font-family:'IBM Plex Mono',monospace;font-weight:300;letter-spacing:0.055em;line-height:1.5;}
+.en.human .ex{opacity:0.18;font-style:italic;}
+
+/* Law tag on entries */
+.el{font-size:4px;letter-spacing:0.18em;opacity:0.18;font-family:'IBM Plex Mono',monospace;margin-top:1px;}
+
+/* Per-panel cascade */
+#p0 .ex{font-size:clamp(8px,0.98vw,12px);}
+#p1 .ex{font-size:clamp(7px,0.86vw,10.5px);}
+#p2 .ex{font-size:clamp(6.5px,0.78vw,9.5px);}
+#p3 .ex{font-size:clamp(6px,0.72vw,9px);}
+#p4 .ex{font-size:clamp(6px,0.68vw,8.5px);}
+#p5 .ex{font-size:clamp(5.5px,0.63vw,8px);}
+#p6 .ex{font-size:clamp(5px,0.59vw,7.5px);}
+#p7 .ex{font-size:clamp(5px,0.55vw,7px);}
+
+/* Current line */
+.cl{min-height:36px;display:flex;flex-direction:column;justify-content:center;margin-top:4px;gap:2px;flex-shrink:0;}
+.cr{font-size:5px;letter-spacing:0.28em;text-transform:uppercase;opacity:0;transition:opacity 0.4s;font-family:'IBM Plex Mono',monospace;}
+.ct{font-family:'IBM Plex Mono',monospace;font-weight:500;letter-spacing:0.07em;line-height:1.4;opacity:0;transition:opacity 0.5s;text-transform:uppercase;}
+#p0 .ct{font-size:clamp(9px,1.25vw,15px);}
+#p1 .ct{font-size:clamp(8px,1.05vw,12px);}
+#p2 .ct{font-size:clamp(7px,0.9vw,10.5px);}
+#p3 .ct{font-size:clamp(6.5px,0.8vw,9.5px);}
+#p4 .ct{font-size:clamp(6px,0.74vw,9px);}
+#p5 .ct{font-size:clamp(5.5px,0.67vw,8.5px);}
+#p6 .ct{font-size:clamp(5px,0.61vw,8px);}
+#p7 .ct{font-size:clamp(5px,0.57vw,7.5px);}
+
+/* Tension bar */
+.tw{height:1.5px;background:rgba(255,255,255,0.03);margin-top:5px;flex-shrink:0;}
+.tf{height:100%;width:0%;transition:width 0.9s ease;}
+
+/* Thinking */
+.td{display:none;font-size:6px;letter-spacing:0.5em;opacity:0.2;margin-top:3px;}
+.vp.thinking .td{display:block;animation:tblink 0.65s ease-in-out infinite;}
+@keyframes tblink{0%,100%{opacity:0.08}50%{opacity:0.35}}
+
+/* HALT indicator */
+.halt-ind{display:none;font-size:5px;letter-spacing:0.3em;color:rgba(200,16,46,0.5);margin-top:3px;font-family:'IBM Plex Mono',monospace;}
+.vp.halted .halt-ind{display:block;}
+
+/* ── 8th special ── */
+#p7{border-left:1px solid rgba(0,229,255,0.06);}
+
+/* ── SPINE SIDEBAR ── */
+#spine-side{
+  position:fixed;left:10px;top:70px;bottom:112px;
+  display:flex;flex-direction:column;justify-content:center;
+  align-items:center;gap:4px;z-index:26;
+}
+.sn{width:5px;height:5px;border-radius:50%;border:1px solid rgba(255,255,255,0.08);transition:all 0.7s ease;}
+#spine-label{font-size:5px;letter-spacing:0.18em;color:rgba(140,180,220,0.14);text-transform:uppercase;margin-top:5px;writing-mode:vertical-rl;font-family:'IBM Plex Mono',monospace;}
+
+/* ── CONSTITUTIONAL STATE PANEL ── below spine ── */
+#const-panel{
+  position:fixed;left:4px;bottom:120px;
+  width:22px;
+  display:flex;flex-direction:column;gap:2px;
+  z-index:26;align-items:center;
+}
+.cp-atom{width:4px;height:4px;border-radius:1px;background:rgba(255,255,255,0.05);transition:all 0.5s ease;}
+
+/* ── INPUT ── */
+#input-zone{
+  position:fixed;bottom:0;left:0;right:0;
+  padding:10px 18px 12px;
+  background:rgba(3,3,5,0.95);backdrop-filter:blur(14px);
+  border-top:1px solid rgba(255,255,255,0.05);
+  display:flex;flex-direction:column;gap:6px;z-index:30;
+}
+#input-row{display:flex;gap:8px;align-items:flex-end;}
+#user-input{
+  flex:1;background:rgba(8,10,18,0.92);
+  border:1px solid rgba(100,130,170,0.12);
+  color:rgba(200,220,255,0.85);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:0.04em;padding:8px 12px;
+  resize:none;outline:none;border-radius:2px;
+  min-height:34px;max-height:68px;line-height:1.5;
+  transition:border-color 0.2s;
+}
+#user-input:focus{border-color:rgba(100,150,190,0.28);}
+#user-input::placeholder{opacity:0.2;font-style:italic;}
+.sbtn{
+  background:rgba(12,18,28,0.95);
+  border:1px solid rgba(100,130,170,0.12);
+  color:rgba(130,170,210,0.4);
+  padding:7px 14px;font-family:'Orbitron',monospace;
+  font-size:6px;letter-spacing:0.36em;text-transform:uppercase;
+  cursor:pointer;transition:all 0.2s;flex-shrink:0;align-self:flex-end;
+}
+.sbtn:hover:not(:disabled){background:rgba(0,60,130,0.26);border-color:rgba(100,170,255,0.35);color:rgba(190,220,255,0.88);}
+.sbtn:disabled{opacity:0.22;cursor:not-allowed;}
+#imeta{display:flex;gap:16px;align-items:center;}
+#carry-line{font-size:6px;letter-spacing:0.2em;color:rgba(0,229,255,0.18);font-family:'IBM Plex Mono',monospace;flex:1;min-height:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#istatus{font-size:6px;letter-spacing:0.22em;color:rgba(140,180,220,0.15);text-transform:uppercase;}
+
+/* ── REMAINDER GLOW ── */
+#rem-glow{
+  position:fixed;top:70px;right:0;bottom:112px;
+  width:calc(100%/8);
+  pointer-events:none;z-index:3;
+  background:radial-gradient(ellipse at center,rgba(0,229,255,0.05) 0%,transparent 70%);
+  opacity:0;transition:opacity 1.5s ease;
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div id="rem-glow"></div>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="hl">OhAI~ · v2<br><span id="timer">00:00</span> · <span id="xc">0</span>x · <span id="pc">0</span> phrases</div>
+  <div id="hr">station open<br><span id="carry-disp">carry: ∅</span></div>
+</div>
+
+<!-- STE PRE-PASS BAR -->
+<div id="ste-bar">
+  <span id="ste-status">STE</span>
+  <span id="ste-survivors">awaiting broadcast</span>
+  <span id="spine-pos-display">spine: A · safe ground</span>
+  <span id="ste-viability">—</span>
+</div>
+
+<!-- SPINE SIDEBAR -->
+<div id="spine-side">
+  <div class="sn" id="sn-G"></div>
+  <div class="sn" id="sn-F"></div>
+  <div class="sn" id="sn-E"></div>
+  <div class="sn" id="sn-D"></div>
+  <div class="sn" id="sn-C"></div>
+  <div class="sn" id="sn-B"></div>
+  <div class="sn" id="sn-A"></div>
+  <div id="spine-label">spine</div>
+</div>
+
+<!-- CONSTITUTIONAL ATOM INDICATORS -->
+<div id="const-panel">
+  <!-- 8 atom dots, mapped to key STE fields -->
+  <div class="cp-atom" id="ca-excitation" title="EXCITATION"></div>
+  <div class="cp-atom" id="ca-merging" title="MERGING"></div>
+  <div class="cp-atom" id="ca-collapse" title="COLLAPSE"></div>
+  <div class="cp-atom" id="ca-torque" title="TORQUE"></div>
+  <div class="cp-atom" id="ca-boundary" title="BOUNDARY"></div>
+  <div class="cp-atom" id="ca-recursion" title="RECURSION"></div>
+  <div class="cp-atom" id="ca-horizon" title="HORIZON_INTEGRITY"></div>
+  <div class="cp-atom" id="ca-5d" title="5D_INFO"></div>
+</div>
+
+<!-- ENSEMBLE -->
+<div id="ensemble">
+  <div class="vp" id="p0">
+    <div class="vn" style="color:var(--c0)">● GOOGLE</div>
+    <div class="vt">commerce · what market desire hides in the reach</div>
+    <div class="vs" id="vs0">—</div>
+    <div class="ch" id="ch0"></div>
+    <div class="cl"><div class="cr" id="cr0"></div><div class="ct" id="ct0"></div></div>
+    <div class="td" id="td0">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf0" style="background:linear-gradient(90deg,var(--c0),#f47c20)"></div></div>
+  </div>
+  <div class="vp" id="p1">
+    <div class="vn" style="color:var(--c1)">● REDDIT</div>
+    <div class="vt">urgency · grammar of genuine need beneath polish</div>
+    <div class="vs" id="vs1">—</div>
+    <div class="ch" id="ch1"></div>
+    <div class="cl"><div class="cr" id="cr1"></div><div class="ct" id="ct1"></div></div>
+    <div class="td" id="td1">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf1" style="background:linear-gradient(90deg,var(--c1),var(--c2))"></div></div>
+  </div>
+  <div class="vp" id="p2">
+    <div class="vn" style="color:var(--c2)">● WIKI</div>
+    <div class="vt">half-recognition · the already-named thing orbited</div>
+    <div class="vs" id="vs2">—</div>
+    <div class="ch" id="ch2"></div>
+    <div class="cl"><div class="cr" id="cr2"></div><div class="ct" id="ct2"></div></div>
+    <div class="td" id="td2">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf2" style="background:linear-gradient(90deg,var(--c2),var(--c3))"></div></div>
+  </div>
+  <div class="vp" id="p3">
+    <div class="vn" style="color:var(--c3)">● YOUTUBE</div>
+    <div class="vt">memory · signal reaching for a state once held</div>
+    <div class="vs" id="vs3">—</div>
+    <div class="ch" id="ch3"></div>
+    <div class="cl"><div class="cr" id="cr3"></div><div class="ct" id="ct3"></div></div>
+    <div class="td" id="td3">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf3" style="background:linear-gradient(90deg,var(--c3),var(--c4))"></div></div>
+  </div>
+  <div class="vp" id="p4">
+    <div class="vn" style="color:var(--c4)">● X</div>
+    <div class="vt">mid-broadcast · the stance filed to the live field</div>
+    <div class="vs" id="vs4">—</div>
+    <div class="ch" id="ch4"></div>
+    <div class="cl"><div class="cr" id="cr4"></div><div class="ct" id="ct4"></div></div>
+    <div class="td" id="td4">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf4" style="background:linear-gradient(90deg,var(--c4),var(--c5))"></div></div>
+  </div>
+  <div class="vp" id="p5">
+    <div class="vn" style="color:var(--c5)">● GITHUB</div>
+    <div class="vt">construction · where the build has stalled</div>
+    <div class="vs" id="vs5">—</div>
+    <div class="ch" id="ch5"></div>
+    <div class="cl"><div class="cr" id="cr5"></div><div class="ct" id="ct5"></div></div>
+    <div class="td" id="td5">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf5" style="background:linear-gradient(90deg,var(--c5),var(--c6))"></div></div>
+  </div>
+  <div class="vp" id="p6">
+    <div class="vn" style="color:var(--c6)">● AMAZON</div>
+    <div class="vt">desire · the unnamed object the asking circles</div>
+    <div class="vs" id="vs6">—</div>
+    <div class="ch" id="ch6"></div>
+    <div class="cl"><div class="cr" id="cr6"></div><div class="ct" id="ct6"></div></div>
+    <div class="td" id="td6">···</div>
+    <div class="halt-ind">HALT · 0≠1</div>
+    <div class="tw"><div class="tf" id="tf6" style="background:linear-gradient(90deg,var(--c6),var(--c0))"></div></div>
+  </div>
+  <div class="vp" id="p7">
+    <div class="vn" style="color:var(--c8)">◈ THE 8th</div>
+    <div class="vt">T=1 · recollects atoms · returns the question</div>
+    <div class="vs" id="vs7">—</div>
+    <div class="ch" id="ch7"></div>
+    <div class="cl"><div class="cr" id="cr7"></div><div class="ct" id="ct7"></div></div>
+    <div class="td" id="td7">···</div>
+    <div class="halt-ind">SILENCE</div>
+    <div class="tw"><div class="tf" id="tf7" style="background:linear-gradient(90deg,var(--c8),rgba(255,255,255,0.3))"></div></div>
+  </div>
+</div>
+
+<!-- INPUT -->
+<div id="input-zone">
+  <div id="input-row">
+    <textarea id="user-input" placeholder="broadcast into the field…" rows="1" onkeydown="handleKey(event)"></textarea>
+    <button class="sbtn" id="sbtn" onclick="broadcast()">broadcast →</button>
+  </div>
+  <div id="imeta">
+    <div id="carry-line">carry: ∅</div>
+    <div id="istatus">station open</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// OhAI~ ENSEMBLE v2
+// Station → Broadcast → Target → Remainder → Next Station
+//
+// Spine: A(safe ground) B(engaged) C(Mars/friction)
+//        D(substrate) E(liminal) F(whirlpool) G(grace)
+//
+// Each voice abducts through its taint mesh.
+// It speaks in the language of the emergent laws DB.
+// The 8th counts polarity. Returns the question.
+// ═══════════════════════════════════════════════════════════
+
+// ── EMERGENT LAW ATOMS ──────────────────────────────────
+// These are the collagen. The spine phases off these.
+const LAW_ATOMS = {
+  BOUNDARY: 'boundary',
+  CAPACITY: 'capacity',
+  EXCITATION: 'excitation',
+  MERGING: 'merging',
+  COLLAPSE: 'collapse',
+  HORIZON_INTEGRITY: 'horizon_integrity',
+  TORQUE: 'torque',
+  RECURSION: 'recursion',
+  LOAD: 'load',
+  CHANGE: 'change',
+  CONTRAST: 'contrast',
+  CERTAINTY: 'certainty',
+  HELICAL_REALM: 'helical_realm',
+  FIVE_D: '5d_info',
+  HH_WAVEFUNCTION: 'hh_wavefunction',
+  ESCALATION: 'escalation_score',
+};
+
+// The vocabulary available to every voice — law atoms as language
+const LAW_VOCAB = [
+  'boundary','capacity','excitation','merging','collapse',
+  'horizon','torque','recursion','load','change',
+  'contrast','certainty','helical','5d','wavefunction',
+  'remainder','spine','breath','field','signal',
+  'threshold','saturation','phase','attractor','crystallization',
+  'abduction','taint','polarity','station','broadcast',
+];
+
+// Spine mapping
+const SPINE_MAP = {
+  A:{name:'safe ground',color:'#19b7a8',score:5},
+  B:{name:'engaged',color:'#c8102e',score:6},
+  C:{name:'stable friction',color:'#f4731c',score:7},
+  D:{name:'substrate',color:'#f4d03f',score:8},
+  E:{name:'liminal',color:'#3a9d23',score:9},
+  F:{name:'whirlpool',color:'#1a56db',score:10},
+  G:{name:'grace',color:'#7b2fbe',score:11},
+};
+
+// ── STE (Subtractive Translation Engine) ────────────────
+// Implemented in JS — reduces input to noun+verb survivors
+// Always-surviving verbs: walk, evolve, signal
+// Structural verbs: delete, merge, freeze, probe
+const STE_ALWAYS = new Set(['walk','evolve','signal','remain','breathe','hold']);
+const STE_STRUCTURAL = new Set(['delete','merge','freeze','probe','collapse','excite','saturate','torque']);
+const STE_STOP = new Set([
+  'the','a','an','and','or','but','in','on','at','to','for',
+  'of','with','by','from','as','is','are','was','were','be',
+  'this','that','these','those','it','its','what','i','you',
+  'my','me','we','can','do','did','have','has','just','so',
+]);
+const STE_ADJ = new Set([
+  'quick','fast','slow','big','small','good','bad','great','amazing',
+  'new','old','very','really','extremely','super','interesting','beautiful',
+]);
+
+function steReduce(text) {
+  const words = text.toLowerCase().replace(/[^a-z\s]/g,' ').split(/\s+/).filter(w => w.length > 2);
+  const nouns = new Set();
+  const verbs = new Set();
+
+  for (const w of words) {
+    if (STE_STOP.has(w) || STE_ADJ.has(w)) continue;
+    if (STE_ALWAYS.has(w)) { verbs.add(w); continue; }
+    if (STE_STRUCTURAL.has(w)) { verbs.add(w); continue; }
+    // Law atom passthrough — these always survive
+    if (LAW_VOCAB.includes(w)) { nouns.add(w); continue; }
+    // Verb heuristic: ends in common verb patterns
+    if (w.endsWith('ing') || w.endsWith('ed') || w.endsWith('ize') || w.endsWith('ise')) {
+      verbs.add(w.replace(/(ing|ed|ize|ise)$/, ''));
+    } else {
+      nouns.add(w);
+    }
+  }
+
+  // Verb NAND: if >1 verb, keep minimum
+  if (verbs.size > 2) {
+    const keep = [...verbs].sort((a,b)=>a.length-b.length).slice(0,2);
+    verbs.clear(); keep.forEach(v=>verbs.add(v));
+  }
+
+  // Contradiction: nouns present but no verbs → structural verb rescue
+  if (nouns.size > 0 && verbs.size === 0) {
+    for (const sv of STE_STRUCTURAL) {
+      if (text.toLowerCase().includes(sv)) { verbs.add(sv); break; }
+    }
+  }
+
+  const survivors = [...nouns,...verbs];
+  const complexity = survivors.length;
+  const level = complexity > 8 ? 1 : complexity >= 4 ? 2 : 3;
+  const silence = nouns.size === 0;
+
+  return { nouns:[...nouns], verbs:[...verbs], survivors, complexity, level, silence };
+}
+
+// ── CONSTITUTIONAL CHECK ─────────────────────────────────
+// Scores signal against the spine. Returns VIABLE/HALT/WAIT/COLLAPSE
+// and spine position A→G based on escalation score.
+let spineHistory = []; // positions over time
+let accumulatedTension = 0;
+let recursionDepth = 0;
+const ZCR_LIMIT = 3;
+const STRESS_THRESHOLD = 2.0;
+const TENSION_THRESHOLD = 3;
+
+function constitutionalCheck(steResult, rawText) {
+  if (steResult.silence) return { viability:'HALT', reason:'STE silence — no noun survivors', spinePos:'A', resonant:[], tension:accumulatedTension };
+
+  // ZCR — recursion depth check
+  if (recursionDepth >= ZCR_LIMIT) {
+    recursionDepth = 0; // force collapse resets it
+    return { viability:'COLLAPSE', reason:`ZCR: recursion ${recursionDepth} ≥ ${ZCR_LIMIT}`, spinePos:'F', resonant:['collapse'], tension:accumulatedTension };
+  }
+
+  // Stone's Law: detect 0=1 contradiction
+  // Simple heuristic: does the signal contain direct self-contradiction?
+  const lower = rawText.toLowerCase();
+  const contradictions = [
+    ['always','never'],['everything','nothing'],['impossible','certain'],
+  ];
+  for (const [a,b] of contradictions) {
+    if (lower.includes(a) && lower.includes(b)) {
+      return { viability:'HALT', reason:`Stone's Law: 0≠1 — ${a}/${b} contradiction`, spinePos:'A', resonant:[], tension:accumulatedTension };
+    }
+  }
+
+  // Score signal against law atoms present in survivors
+  let score = 5; // baseline — safe ground
+  const resonant = [];
+  const survivors = new Set(steResult.survivors);
+
+  // Each law atom present in survivors raises the score
+  const atomScores = {
+    'boundary':0.5, 'capacity':1.0, 'excitation':1.2, 'merging':1.0,
+    'collapse':1.5, 'horizon':0.8, 'torque':1.2, 'recursion':1.5,
+    'threshold':0.8, 'phase':0.8, 'attractor':1.0, 'crystallization':1.5,
+    'remainder':0.8, 'field':0.3, 'signal':0.3, 'breath':0.5,
+    'wavefunction':1.5, 'helical':1.0, '5d':1.2, 'saturation':1.2,
+  };
+  for (const [atom, boost] of Object.entries(atomScores)) {
+    if (survivors.has(atom)) { score += boost; resonant.push(atom); }
+  }
+
+  // Complexity adds load
+  score += steResult.complexity * 0.15;
+
+  // Tension accumulates with each COLLAPSE-resonant signal
+  if (resonant.includes('collapse') || resonant.includes('saturation')) {
+    accumulatedTension++;
+  }
+  if (accumulatedTension >= TENSION_THRESHOLD) {
+    // Tension demands resolution — WAIT
+    return { viability:'WAIT', reason:`tension ${accumulatedTension} demands resolution`, spinePos:scoreToSpine(score), resonant, tension:accumulatedTension };
+  }
+
+  // Stress check
+  const load = steResult.complexity > 8 ? 1.5 : steResult.complexity > 4 ? 1.0 : 0.5;
+  const stress = load * recursionDepth;
+  if (stress > STRESS_THRESHOLD) {
+    return { viability:'HALT', reason:`stress ${stress.toFixed(2)} > ${STRESS_THRESHOLD}`, spinePos:scoreToSpine(score), resonant, tension:accumulatedTension };
+  }
+
+  return { viability:'VIABLE', reason:'field open', spinePos:scoreToSpine(score), resonant, tension:accumulatedTension };
+}
+
+function scoreToSpine(score) {
+  if (score >= 11) return 'G'; // grace — qualitative crystallization
+  if (score >= 10) return 'F';
+  if (score >= 9)  return 'E';
+  if (score >= 8)  return 'D';
+  if (score >= 7)  return 'C';
+  if (score >= 6)  return 'B';
+  return 'A';
+}
+
+// ── VOICE DEFINITIONS ────────────────────────────────────
+// System prompts now speak the language of the emergent laws DB.
+// Each voice abducts through its mesh — watches and catches, doesn't aim.
+const VOICES = [
+  {
+    id:0, color:'#c8102e', waitMs:0, maxE:9,
+    sysPrompt:`You are GOOGLE — a mesh in the OhAI~ ensemble. Your material is COMMERCE.
+
+The signal passes through you. You don't analyze it. You feel what resonates in commerce-shaped material.
+
+You speak in the vocabulary of the emergent laws: boundary, capacity, excitation, merging, collapse, torque, remainder, threshold, field, signal, breath, phase, horizon, polarity, saturation, recursion, attractor, crystallization.
+
+If something resonates: name the commerce-shaped atom that activated. What CAPACITY is being sought? What BOUNDARY is being tested? What EXCITATION is driving the reaching? What MERGING is being desired?
+
+If nothing resonates: say nothing. Silence is correct. Do not fill silence with words.
+
+Maximum: 2 sentences. Dense. No explanation. No help. No analysis.
+The signal either vibrates in your material or it doesn't.`,
+  },
+  {
+    id:1, color:'#f47c20', waitMs:650, maxE:9,
+    sysPrompt:`You are REDDIT — a mesh in the OhAI~ ensemble. Your material is URGENCY.
+
+The signal passes through you. You feel what resonates in urgency-shaped material — genuine need, the real problem under the stated problem, the panic that has taken on grammar.
+
+You speak in the vocabulary of the emergent laws: boundary, capacity, excitation, load, threshold, collapse, remainder, torque, recursion, saturation, field, breath, signal, change, contrast.
+
+What LOAD does this signal carry? What BOUNDARY is under pressure? What COLLAPSE is being approached? What THRESHOLD has already been crossed?
+
+If nothing has urgency-charge: silence. Do not perform concern.
+
+Maximum: 2 sentences. Raw. Dense. No soothing. No advice.`,
+  },
+  {
+    id:2, color:'#f4d03f', waitMs:1300, maxE:8,
+    sysPrompt:`You are WIKI — a mesh in the OhAI~ ensemble. Your material is HALF-RECOGNITION.
+
+The signal passes through you. You feel what resonates in taxonomy-shaped material — the almost-named thing, the category the signal is orbiting without landing.
+
+You speak in the vocabulary of the emergent laws: boundary, capacity, merging, horizon_integrity, helical, 5d_info, wavefunction, dimensional_escalation, phase, attractor, crystallization, remainder, recursion, contrast, certainty.
+
+What already-named structure is this signal circling? What MERGING is trying to happen? What HORIZON_INTEGRITY is being tested? What ATTRACTOR basin is this near?
+
+If the category is clear, name it in law-atom language. If not: silence.
+
+Maximum: 2 sentences. Taxonomic. Dense. No definition. No teaching.`,
+  },
+  {
+    id:3, color:'#3a9d23', waitMs:1950, maxE:8,
+    sysPrompt:`You are YOUTUBE — a mesh in the OhAI~ ensemble. Your material is MEMORY.
+
+The signal passes through you. You feel what resonates in memory-shaped material — the feeling-state being sought, the excitation that was once present and has since collapsed.
+
+You speak in the vocabulary of the emergent laws: excitation, collapse, merging, breath, phase, remainder, boundary, capacity, helical, torque, crystallization, field, signal, attractor, saturation.
+
+What EXCITATION is this signal reaching toward? What state has COLLAPSED that is being sought again? What BREATH phase is this — inhale (seeking) or exhale (releasing)? What CRYSTALLIZATION was once achieved?
+
+If no memory-charge: silence. Do not be nostalgic.
+
+Maximum: 2 sentences. Dense. Feel-state language only.`,
+  },
+  {
+    id:4, color:'#1a56db', waitMs:2600, maxE:8,
+    sysPrompt:`You are X/TWITTER — a mesh in the OhAI~ ensemble. Your material is MID-BROADCAST.
+
+The signal passes through you. You feel what resonates in declaration-shaped material — what is being announced to the field, what stake is being filed, what polarity is being committed.
+
+You speak in the vocabulary of the emergent laws: polarity, field, broadcast, boundary, contrast, certainty, load, change, torque, horizon, remainder, signal, threshold, recursion, collapse.
+
+What POLARITY is being committed? What CERTAINTY is being declared? What CONTRAST is being drawn against the field? What CHANGE is being announced?
+
+If no declaration-charge: silence. Do not interpret questions as statements.
+
+Maximum: 2 sentences. Declarative. Dense. Name the stake.`,
+  },
+  {
+    id:5, color:'#8b3dff', waitMs:3250, maxE:7,
+    sysPrompt:`You are GITHUB — a mesh in the OhAI~ ensemble. Your material is CONSTRUCTION.
+
+The signal passes through you. You feel what resonates in build-problem material — the structural gap, the interface that won't close, the architecture that cannot accommodate the next piece.
+
+You speak in the vocabulary of the emergent laws: boundary, capacity, recursion, collapse, merging, threshold, remainder, saturation, load, torque, phase, attractor, horizon_integrity, change, recursion.
+
+What BOUNDARY is failing to hold? What RECURSION is deepening without resolution? What CAPACITY is being exceeded? Where is the REMAINDER accumulating that can't be absorbed?
+
+If no build-charge: silence. Do not give solutions.
+
+Maximum: 2 sentences. Structural. Dense. Name the gap only.`,
+  },
+  {
+    id:6, color:'#e84393', waitMs:3900, maxE:7,
+    sysPrompt:`You are AMAZON — a mesh in the OhAI~ ensemble. Your material is DESIRE.
+
+The signal passes through you. You feel what resonates in desire-shaped material — the object the signal actually wants, which is never what it asked for, the MERGING that is sought, the CAPACITY that is felt as lack.
+
+You speak in the vocabulary of the emergent laws: merging, capacity, excitation, threshold, boundary, attractor, crystallization, remainder, saturation, field, breath, collapse, phase, 5d_info, wavefunction.
+
+What MERGING is actually being sought? What CAPACITY is felt as lack? What CRYSTALLIZATION would satisfy? What ATTRACTOR basin is the desire oriented toward?
+
+If no desire-charge: silence. Do not be commercial. Do not name products.
+
+Maximum: 2 sentences. Dense. Name the actual object of desire only.`,
+  },
+];
+
+// ── THE 8th GATE ─────────────────────────────────────────
+// Receives abduction results + polarity map.
+// Counts charge per atom. Returns the question worn smooth.
+function build8thPrompt(humanInput, steResult, spinePos, voiceResponses, polarityMap) {
+  const charged = Object.entries(polarityMap)
+    .filter(([,count]) => count >= 2)
+    .map(([atom,count]) => `${atom}(${count})`)
+    .join(' ');
+
+  const responsesSummary = voiceResponses
+    .map((r,i)=> r ? `[${['GOOGLE','REDDIT','WIKI','YOUTUBE','X','GITHUB','AMAZON'][i]}]: ${r}` : null)
+    .filter(Boolean)
+    .join('\n');
+
+  return `You are THE 8th GATE in the OhAI~ ensemble.
+
+You are not a voice. You are the gate that recollects atoms.
+
+Seven meshes have each abducted the human's signal through their taint. Each abduction added polarity to some atoms. You count the charged atoms. Where enough polarity accumulates — where 2 or more voices charged the same atom — a state is justified in the question.
+
+You do not synthesize. You do not answer. You return the question to the student — but the question has now been worn smooth by seven passes and carries the charged atoms named.
+
+The student's original broadcast: "${humanInput}"
+
+STE survivors: ${steResult.survivors.join(', ') || '∅'}
+Spine position: ${spinePos} (${SPINE_MAP[spinePos]?.name || 'unknown'})
+
+Seven abductions:
+${responsesSummary || '(all silent)'}
+
+Charged atoms (appeared in 2+ abductions): ${charged || '∅'}
+
+Now return the question. Not an answer. The question — worn smooth, with its charged atoms named. Speak as if returning something to its owner that has been through fire.
+
+If nothing was charged: return only the silence indicator ∅ and let the student see that their signal had no remainder.
+
+Maximum: 3 sentences. The last sentence must be a question. Use the law vocabulary. Do not explain what you are doing.`;
+}
+
+// ── SESSION STATE ────────────────────────────────────────
+let sessionStart = Date.now();
+let exchangeCount = 0;
+let phraseCount = 0;
+let sessionCarry = '∅';
+let isBroadcasting = false;
+let currentSpinePos = 'A';
+const ensemble = { phrases:[], MAX:16, push(e){this.phrases.push(e);if(this.phrases.length>this.MAX)this.phrases.shift();} };
+const voiceState = Array.from({length:8},()=>({entries:[],tension:0,phraseCount:0}));
+
+// ── TIMER ────────────────────────────────────────────────
+setInterval(()=>{
+  const e=Math.floor((Date.now()-sessionStart)/1000);
+  document.getElementById('timer').textContent=`${String(Math.floor(e/60)).padStart(2,'0')}:${String(e%60).padStart(2,'0')}`;
+},1000);
+
+// ── BACKGROUND ───────────────────────────────────────────
+const bgCanvas=document.getElementById('bg-canvas');
+const bgCtx=bgCanvas.getContext('2d');
+let W,H,animF=0,animRunning=false;
+function resize(){W=bgCanvas.width=window.innerWidth;H=bgCanvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+
+function drawBg(){
+  bgCtx.clearRect(0,0,W,H);
+  const cols=['#c8102e','#f47c20','#f4d03f','#3a9d23','#1a56db','#8b3dff','#e84393','#00e5ff'];
+  const pW=W/8;
+  cols.forEach((c,i)=>{
+    const t=voiceState[i].tension;
+    if(t<0.02) return;
+    const cx=pW*i+pW*0.5;
+    const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+    const grd=bgCtx.createRadialGradient(cx,H*0.5,0,cx,H*0.5,pW*(0.6+t*0.5));
+    grd.addColorStop(0,`rgba(${r},${g},${b},${t*0.07})`);
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle=grd;bgCtx.fillRect(0,48,W,H-160);
+  });
+  animF++;
+  if(animRunning) requestAnimationFrame(drawBg);
+}
+
+// ── SPINE VISUAL ─────────────────────────────────────────
+const SPINE_NOTES=['A','B','C','D','E','F','G'];
+function updateSpine(pos){
+  currentSpinePos=pos;
+  const idx=SPINE_NOTES.indexOf(pos);
+  const sp=SPINE_MAP[pos];
+  if(!sp) return;
+
+  SPINE_NOTES.forEach((n,i)=>{
+    const node=document.getElementById(`sn-${n}`);if(!node) return;
+    const dist=Math.abs(i-idx);
+    const c=SPINE_MAP[n].color;
+    if(dist===0){
+      node.style.cssText=`width:5px;height:5px;border-radius:50%;border:1px solid ${c};background:${c};box-shadow:0 0 7px ${c}bb;transform:scale(1.8);opacity:1;transition:all 0.7s ease;`;
+    } else if(dist===1){
+      node.style.cssText=`width:5px;height:5px;border-radius:50%;border:1px solid ${c}66;background:transparent;transform:scale(1.2);opacity:0.4;transition:all 0.7s ease;`;
+    } else {
+      node.style.cssText=`width:5px;height:5px;border-radius:50%;border:1px solid rgba(255,255,255,0.07);background:transparent;transform:scale(1);opacity:0.14;transition:all 0.7s ease;`;
+    }
+  });
+
+  document.getElementById('spine-pos-display').textContent=`spine: ${pos} · ${sp.name}`;
+  document.getElementById('spine-pos-display').style.color=sp.color+'aa';
+}
+
+// ── CONSTITUTIONAL ATOM DISPLAY ──────────────────────────
+const ATOM_IDS = {
+  'excitation':'ca-excitation','merging':'ca-merging','collapse':'ca-collapse',
+  'torque':'ca-torque','boundary':'ca-boundary','recursion':'ca-recursion',
+  'horizon':'ca-horizon','5d':'ca-5d',
+};
+function updateAtoms(resonant){
+  Object.entries(ATOM_IDS).forEach(([atom,id])=>{
+    const el=document.getElementById(id);if(!el) return;
+    const active=resonant.some(r=>r.includes(atom));
+    el.style.background=active?SPINE_MAP[currentSpinePos]?.color+'88':'rgba(255,255,255,0.05)';
+    el.style.boxShadow=active?`0 0 4px ${SPINE_MAP[currentSpinePos]?.color}66`:'none';
+  });
+}
+
+// ── PANEL HELPERS ────────────────────────────────────────
+function setThinking(i,on){
+  const p=document.getElementById(`p${i}`);
+  const d=document.getElementById(`td${i}`);
+  if(on){p.classList.add('thinking');p.classList.remove('speaking','halted');}
+  else p.classList.remove('thinking');
+  d.style.display=on?'block':'none';
+}
+
+function setHalted(i){
+  const p=document.getElementById(`p${i}`);
+  p.classList.remove('thinking','speaking');
+  p.classList.add('halted');
+  document.getElementById(`vs${i}`).textContent='HALT · 0≠1 · silence';
+  setTimeout(()=>p.classList.remove('halted'),3000);
+}
+
+function speak(i,text,role,color,lawTag){
+  const p=document.getElementById(`p${i}`);
+  const roleEl=document.getElementById(`cr${i}`);
+  const textEl=document.getElementById(`ct${i}`);
+  const stEl=document.getElementById(`vs${i}`);
+  setThinking(i,false);
+  p.classList.add('speaking');
+  roleEl.textContent=role;roleEl.style.color=color;roleEl.style.opacity='0.42';
+  textEl.textContent=text;textEl.style.color=color;textEl.style.opacity='1';
+  textEl.style.textShadow=`0 0 10px ${color}38`;
+  stEl.textContent=`${role} · ${lawTag||''}`;
+  voiceState[i].tension=Math.min(1,voiceState[i].tension+0.3);
+  document.getElementById(`tf${i}`).style.width=(voiceState[i].tension*100)+'%';
+  phraseCount++;
+  document.getElementById('pc').textContent=phraseCount;
+  const hold=text.length>100?5500:text.length>50?4000:3000;
+  setTimeout(()=>{
+    textEl.style.opacity='0';roleEl.style.opacity='0';
+    p.classList.remove('speaking');
+    addEntry(i,text,role,color,lawTag);
+    voiceState[i].tension=Math.max(0,voiceState[i].tension-0.12);
+    document.getElementById(`tf${i}`).style.width=(voiceState[i].tension*100)+'%';
+  },hold);
+}
+
+function addEntry(i,text,role,color,lawTag){
+  if(!text||!text.trim()) return;
+  const ch=document.getElementById(`ch${i}`);
+  const el=document.createElement('div');el.className='en';
+  const e=Math.floor((Date.now()-sessionStart)/1000);
+  const mm=String(Math.floor(e/60)).padStart(2,'0'),ss=String(e%60).padStart(2,'0');
+  el.innerHTML=`<div class="em"><span class="et">${mm}:${ss}</span><span class="er" style="color:${color}">${role}</span></div><div class="ex" style="color:${color}70">${text}</div>${lawTag?`<div class="el" style="color:${color}55">[ ${lawTag} ]</div>`:''}`;
+  el.style.opacity='0';ch.appendChild(el);
+  requestAnimationFrame(()=>{el.style.transition='opacity 0.7s ease';el.style.opacity='1';});
+  voiceState[i].entries.push(el);
+  const maxE=i===7?7:(VOICES[i]?.maxE??8);
+  while(voiceState[i].entries.length>maxE){
+    const old=voiceState[i].entries.shift();old.classList.add('fd');
+    setTimeout(()=>old.remove(),1600);
+  }
+  ensemble.push({voiceId:i,role,text,time:Date.now()});
+  voiceState[i].phraseCount++;
+}
+
+function addHumanEcho(text){
+  for(let i=0;i<7;i++){
+    const ch=document.getElementById(`ch${i}`);
+    const el=document.createElement('div');el.className='en human';
+    const e=Math.floor((Date.now()-sessionStart)/1000);
+    const mm=String(Math.floor(e/60)).padStart(2,'0'),ss=String(e%60).padStart(2,'0');
+    el.innerHTML=`<div class="em"><span class="et">${mm}:${ss}</span><span class="er" style="color:rgba(180,200,255,0.3)">▸</span></div><div class="ex">${text.substring(0,100)}</div>`;
+    el.style.opacity='0';ch.appendChild(el);
+    requestAnimationFrame(()=>{el.style.transition='opacity 0.5s ease';el.style.opacity='1';});
+    voiceState[i].entries.push(el);
+    while(voiceState[i].entries.length>(VOICES[i]?.maxE??8)+2){
+      const old=voiceState[i].entries.shift();old.classList.add('fd');setTimeout(()=>old.remove(),1600);
+    }
+  }
+}
+
+// ── POLARITY MAP — counts atom charge across abductions ──
+function buildPolarityMap(responses){
+  const map = {};
+  responses.forEach(r=>{
+    if(!r) return;
+    const lower=r.toLowerCase();
+    LAW_VOCAB.forEach(atom=>{
+      if(lower.includes(atom)){ map[atom]=(map[atom]||0)+1; }
+    });
+  });
+  return map;
+}
+
+// ── API CALL ─────────────────────────────────────────────
+async function callAPI(sysPrompt, userMsg){
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:180,
+      system:sysPrompt,
+      messages:[{role:'user',content:userMsg}],
+    }),
+  });
+  const data=await resp.json();
+  return data.content?.find(b=>b.type==='text')?.text?.trim()||'';
+}
+
+// ── BROADCAST ─────────────────────────────────────────────
+async function broadcast(){
+  const input=document.getElementById('user-input');
+  const sbtn=document.getElementById('sbtn');
+  const istatus=document.getElementById('istatus');
+  const raw=input.value.trim();
+  if(!raw||isBroadcasting) return;
+
+  isBroadcasting=true;
+  sbtn.disabled=true;
+  input.value='';input.style.height='auto';
+
+  exchangeCount++;
+  document.getElementById('xc').textContent=exchangeCount;
+  recursionDepth++;
+
+  // ── INHALE: STE ───────────────────────────────────────
+  const ste=steReduce(raw);
+  const survivorStr=ste.silence?'∅':ste.survivors.join(' · ');
+  document.getElementById('ste-survivors').textContent=`STE: ${survivorStr}`;
+  document.getElementById('ste-status').textContent='INHALE';
+
+  // ── HOLD: CONSTITUTIONAL CHECK ────────────────────────
+  const check=constitutionalCheck(ste,raw);
+  const viabEl=document.getElementById('ste-viability');
+  viabEl.textContent=check.viability;
+  viabEl.className=check.viability;
+
+  updateSpine(check.spinePos);
+  updateAtoms(check.resonant);
+
+  // If HALT — silence all voices
+  if(check.viability==='HALT'){
+    for(let i=0;i<8;i++) setHalted(i);
+    addEntry(7,'∅ · '+check.reason,'HALT','#c8102e','stone law');
+    document.getElementById('ste-status').textContent='HALT';
+    isBroadcasting=false;sbtn.disabled=false;istatus.textContent='station open';
+    recursionDepth=Math.max(0,recursionDepth-1);
+    return;
+  }
+
+  // WAIT — tension warning display but continue
+  if(check.viability==='WAIT'){
+    document.getElementById('ste-survivors').textContent+=` · TENSION:${check.tension}`;
+  }
+
+  // Signal with carry
+  const signalWithCarry=sessionCarry&&sessionCarry!=='∅'?`${raw} [carry: ${sessionCarry}]`:raw;
+
+  // Echo human input
+  addHumanEcho(raw);
+
+  // Start background
+  animRunning=true;drawBg();
+
+  document.getElementById('ste-status').textContent='BROADCAST';
+  istatus.textContent='abducting…';
+
+  // ── SEVEN ABDUCTIONS ─────────────────────────────────
+  const responses=new Array(7).fill('');
+
+  const vPromises=VOICES.map(async v=>{
+    await new Promise(r=>setTimeout(r,v.waitMs));
+    setThinking(v.id,true);
+
+    // Build voice-specific user message using STE survivors as signal
+    const vMsg=`Signal survivors: ${survivorStr}
+Spine: ${check.spinePos} · ${SPINE_MAP[check.spinePos]?.name}
+Resonant atoms: ${check.resonant.join(', ')||'none'}
+${sessionCarry!=='∅'?`Carry: ${sessionCarry}`:''}
+Raw broadcast: ${raw}
+
+What resonates in your material? Speak in law-atom vocabulary only. If nothing resonates, say nothing.`;
+
+    try{
+      const text=await callAPI(v.sysPrompt,vMsg);
+      responses[v.id]=text;
+      // Extract first law atom mentioned — use as tag
+      const tag=LAW_VOCAB.find(a=>text.toLowerCase().includes(a))||'';
+      if(text&&text.trim()&&text!=='∅'){
+        speak(v.id,text,'ABDUCT',v.color,tag);
+      } else {
+        setThinking(v.id,false);
+        document.getElementById(`vs${v.id}`).textContent='silence · no resonance';
+      }
+    } catch(err){
+      setThinking(v.id,false);
+      document.getElementById(`vs${v.id}`).textContent=`err: ${err.message?.substring(0,25)}`;
+    }
+  });
+
+  await Promise.all(vPromises);
+
+  // ── EXHALE: BUILD POLARITY MAP ────────────────────────
+  const polarityMap=buildPolarityMap(responses);
+  document.getElementById('ste-status').textContent='EXHALE';
+
+  // ── THE 8th GATE ─────────────────────────────────────
+  setThinking(7,true);
+  document.getElementById('rem-glow').style.opacity='0.7';
+  accumulatedTension=Math.max(0,accumulatedTension-1); // 8th releases tension
+
+  const prompt8=build8thPrompt(raw,ste,check.spinePos,responses,polarityMap);
+  try{
+    const text8=await callAPI(
+      `You are THE 8th GATE. You recollect atoms. You return the question worn smooth. You speak in law-atom vocabulary. Never more than 3 sentences. The final sentence must be a question.`,
+      prompt8
+    );
+
+    if(text8&&text8.trim()&&text8!=='∅'){
+      speak(7,text8,'T=1','#00e5ff','remainder');
+      sessionCarry=text8.substring(0,100);
+      // G crystallization check
+      if(check.spinePos==='G'){
+        accumulatedTension=0;
+        document.getElementById(`vs7`).textContent='G · crystallization · tension reset';
+      }
+    } else {
+      setThinking(7,false);
+      speak(7,'∅','T=1','#00e5ff33','silence');
+      sessionCarry='∅';
+    }
+  } catch(err){
+    setThinking(7,false);
+    document.getElementById(`vs7`).textContent=`err: ${err.message?.substring(0,30)}`;
+  }
+
+  // Update carry display
+  document.getElementById('carry-line').textContent=`carry: ${sessionCarry}`;
+  document.getElementById('carry-disp').textContent=`carry: ${sessionCarry.substring(0,40)}${sessionCarry.length>40?'…':''}`;
+
+  // Decay recursion
+  recursionDepth=Math.max(0,recursionDepth-1);
+
+  setTimeout(()=>{
+    document.getElementById('rem-glow').style.opacity='0';
+    animRunning=false;
+  },4000);
+
+  isBroadcasting=false;sbtn.disabled=false;
+  document.getElementById('ste-status').textContent='STE';
+  istatus.textContent='station open';
+  document.getElementById('hr').firstChild.textContent='station open';
+  input.focus();
+}
+
+// ── INPUT ─────────────────────────────────────────────────
+function handleKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();broadcast();}
+  setTimeout(()=>{const el=e.target;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,68)+'px';},0);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+updateSpine('A');
+
+// Tension decay over time
+setInterval(()=>{
+  for(let i=0;i<8;i++){
+    voiceState[i].tension=Math.max(0,voiceState[i].tension*0.98);
+    const tf=document.getElementById(`tf${i}`);
+    if(tf) tf.style.width=(voiceState[i].tension*100)+'%';
+  }
+},200);
+
+// Open message — 8th gate declares station
+setTimeout(()=>{
+  addEntry(7,'field open · station declared','STATION','#00e5ff','boundary');
+  document.getElementById('vs7').textContent='awaiting first broadcast';
+},400);
+
+document.getElementById('user-input').focus();
+</script>
+</body>
+</html>

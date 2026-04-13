@@ -1,0 +1,11 @@
+{
+  "port": 7700,
+  "ollama_model": "ohai-oracle",
+  "ollama_url": "http://localhost:11434/api/generate",
+  "nodes": [
+    {
+      "url": "http://192.168.1.x:11434",
+      "model": "llama3.1"
+    }
+  ]
+}
