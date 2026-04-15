@@ -431,6 +431,60 @@ input[type=range]::-webkit-slider-thumb {
 .fv.current { border-color: var(--border2); color: var(--text2); }
 .fv.future { color: var(--text3); }
 
+/* ── Breath state machine display ────────────────────── */
+.breath-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border: 0.5px solid var(--border);
+  border-radius: 5px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  flex-wrap: wrap;
+}
+.breath-phase {
+  font-weight: 500;
+  min-width: 90px;
+  color: var(--text3);
+  transition: color 0.2s;
+}
+.breath-phase.idle     { color: var(--text3); }
+.breath-phase.inhale   { color: var(--accent-lock); }
+.breath-phase.hold     { color: var(--accent-emerge); }
+.breath-phase.exhale   { color: var(--accent-rem); }
+.breath-phase.flip8    { color: #ff4444; }
+.breath-phase.done     { color: var(--accent-lock); }
+.breath-gates {
+  display: flex;
+  gap: 3px;
+}
+.breath-gate-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.15s;
+}
+.breath-gate-dot.locked  { background: var(--accent-lock); }
+.breath-gate-dot.open    { background: var(--accent-rem); }
+.breath-gate-dot.current { background: var(--accent-emerge); }
+.breath-stat { color: var(--text3); }
+.breath-stat span { color: var(--text2); }
+.breath-available {
+  font-size: 10px;
+  color: var(--text3);
+  margin-left: auto;
+}
+.breath-available code {
+  background: var(--bg4);
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: var(--text2);
+  font-size: 10px;
+}
+
 /* ── QUANTUM LAYER ───────────────────────────────────────── */
 .quantum-badge {
   display: inline-block;
@@ -911,6 +965,24 @@ input[type=range]::-webkit-slider-thumb {
   <div class="section-label">Conjunction REPL</div>
   <div class="panel">
     <div class="panel-head">Interactive kernel — type :help for commands</div>
+    <!-- Breath state bar -->
+    <div class="breath-bar" id="breath-bar">
+      <span class="breath-phase idle" id="bp-phase">IDLE</span>
+      <div class="breath-gates" id="bp-gates">
+        <div class="breath-gate-dot" title="gate 1 inhale"></div>
+        <div class="breath-gate-dot" title="gate 2"></div>
+        <div class="breath-gate-dot" title="gate 3"></div>
+        <div class="breath-gate-dot" title="gate 4"></div>
+        <div class="breath-gate-dot" title="gate 5"></div>
+        <div class="breath-gate-dot" title="gate 6"></div>
+        <div class="breath-gate-dot" title="gate 7 exhale"></div>
+      </div>
+      <span class="breath-stat">BREATHS <span id="bp-breaths">0</span></span>
+      <span class="breath-stat">carry ∇ <span id="bp-carry">0</span></span>
+      <span class="breath-stat">moss <span id="bp-moss">0</span></span>
+      <span class="breath-stat">spores <span id="bp-spores">0</span></span>
+      <span class="breath-available" id="bp-avail">:inhale a b to begin</span>
+    </div>
     <div class="repl-input-row">
       <span class="repl-prompt">cos&gt;</span>
       <input type="text" class="repl-input" id="repl-in"
@@ -1158,6 +1230,176 @@ const ops = {
              note: `query=${a} · value=${b} · binding=${a^b} · non-commutative` };
   },
 
+  // ════════════════════════════════════════════════════════
+  // LAYER 1: BREATH PRIMITIVES
+  // These move the spine. All follow {c, rem, shad, lock}.
+  // The stateful versions (:inhale/:hold/:exhale) are handled
+  // by the BS (breath state) machine in evalRepl.
+  // ════════════════════════════════════════════════════════
+
+  // INHALE (gate 1): opens a domain. Costs substrate.
+  // C = a|b (union), ∇ = a&b (shared cost), ⊘ = popcount(a^b) (divergence)
+  // Locks when orthogonal (no shared substrate).
+  inhale(a, b) {
+    const c    = a | b;
+    const rem  = a & b;
+    const shad = popcount(a ^ b);
+    return { c, rem, shad, lock: rem === 0,
+             gate: 1, note: `union=${c} · cost=${rem} · divergence=${shad}` };
+  },
+
+  // HOLD (gates 2-6): torque accumulator. Multiple holds legal.
+  // C = a (preserved), ∇ = |a-b| (tension), ⊘ = gcd (shared structure)
+  // Locks when tension < 2 (low torque — depth can increase without friction).
+  hold(a, b) {
+    const c    = a;
+    const rem  = Math.abs(a - b);
+    const shad = gcd(a || 1, b || 1);
+    return { c, rem, shad, lock: rem < 2,
+             gate: '2-6', note: `preserved=${a} · tension=${rem} · shared=${shad}` };
+  },
+
+  // EXHALE (gate 7): only gate that can clear the circuit.
+  // C = |a-b| (net movement), ∇ = min(a,b) (minimum substrate consumed)
+  // ⊘ = a+b (total energy in cycle). Locks when no remainder.
+  // If locked → write to SPORE ARCHIVE. If open → dissolve.
+  exhale(a, b) {
+    const c    = Math.abs(a - b);
+    const rem  = Math.min(a, b);
+    const shad = a + b;
+    return { c, rem, shad, lock: rem === 0,
+             gate: 7, note: rem === 0 ? 'SPORE READY — gates clear' : `dissolving — ∇=${rem} unresolved` };
+  },
+
+  // FLIP8 (gate 8): the U-turn. Never locks. Forces a drop.
+  // Logs ← WRONG WAY. Use for the orange flash / circuit reset.
+  flip8(a) {
+    return { c: (~a) & 0xFFFF, rem: 0xFFFF, shad: a, lock: false,
+             gate: 8, note: '← WRONG WAY — forced drop' };
+  },
+
+  // PRUNE (exit): explicit dissolve. Moves nodes to hoarfrost without a spore.
+  prune(a, b) {
+    return { c: 0, rem: a + b, shad: 0, lock: false,
+             gate: 'exit', note: `dissolved — ∇=${a+b} moved to hoarfrost` };
+  },
+
+  // ════════════════════════════════════════════════════════
+  // LAYER 2: CONSTITUTION AS SYSCALLS
+  // Articles 1-7 as callable runtime checks.
+  // ════════════════════════════════════════════════════════
+
+  // HORIZON_INTEGRITY: 0 ≠ 1 as an operator.
+  // C=1 if distinct, C=0 if equal (false equivalence).
+  // Locks when distinct (the axiom is honored).
+  horizon_integrity(a, b) {
+    const c    = a !== b ? 1 : 0;
+    const rem  = a === b ? 1 : 0;
+    const shad = a ^ b;
+    return { c, rem, shad, lock: rem === 0,
+             note: rem === 0 ? '0 ≠ 1 honored' : '⚠ false equivalence detected — 0 = 1 violation' };
+  },
+
+  // CAPACITY: Article 4 in code. Shadow is overcapacity.
+  // C=1 if within bounds, ∇ = overage beyond 255.
+  capacity(total) {
+    const MAX  = 255;
+    const c    = total < MAX ? 1 : 0;
+    const rem  = Math.max(0, total - MAX);
+    return { c, rem, shad: total, lock: rem === 0,
+             note: `${total}/${MAX} · ${rem > 0 ? '⚠ OVERCAPACITY: ' + rem : 'within bounds'}` };
+  },
+
+  // REST: Always locks. Calling rest at depth 2 auto-skips to exhale.
+  // Teaches the OS that 7 is a ceiling, not a target.
+  rest(a, b) {
+    return { c: a, rem: 0, shad: b, lock: true,
+             note: `resting at ${a} — auto-exhale eligible` };
+  },
+
+  // GRACE: Keeps a contradiction alive without resolving it.
+  // Never fails. The field holds both without forcing a choice.
+  grace(a, b) {
+    return { c: a | b, rem: a & b, shad: a ^ b, lock: true,
+             note: `contradiction held — both signals preserved` };
+  },
+
+  // NO_BLOOD: Wraps expensive ops. If lock=false, caller should flip8.
+  // ∇ = cost of the divergence from shared substrate.
+  no_blood(a, b) {
+    const c   = a & b;
+    const rem = (a - c) + (b - c);
+    return { c, rem, shad: rem, lock: rem === 0,
+             note: rem === 0 ? 'clean — no substrate lost' : `⚠ cost=${rem} — consider :flip8` };
+  },
+
+  // ════════════════════════════════════════════════════════
+  // LAYER 3: MEMORY AND CARRY
+  // Lifecycle management for carry words and spines.
+  // ════════════════════════════════════════════════════════
+
+  // CARRY: routes unpaired remainder to the next breath.
+  // Locks when ∇=0 (nothing left to carry).
+  carry(a, b) {
+    return { c: a, rem: b, shad: a + b, lock: b === 0,
+             note: b === 0 ? 'carry clear — field clean' : `carrying ∇=${b} into next breath` };
+  },
+
+  // MOSS: persistent accumulator. Never locks. Orange in the basin when > 3.
+  // Each call adds 1 to the shadow (moss depth).
+  moss(a, b) {
+    return { c: a, rem: 0, shad: b + 1, lock: false,
+             note: `moss depth → ${b+1}${b+1 > 3 ? ' — ⚠ ORANGE: approaching hoarfrost' : ''}` };
+  },
+
+  // HOARFROST: Article 7. Run on every breath rollover.
+  // ∇ feeds the sparkline score history.
+  hoarfrost(a, b) {
+    const c    = a ^ b;
+    const rem  = popcount(a ^ b);
+    const shad = a & b;
+    return { c, rem, shad, lock: rem === 0,
+             note: `frost=${c} · score=${rem} → sparkline · common=${shad}` };
+  },
+
+  // DISSOLVE: intentional forgetting. Clears spine without a spore.
+  dissolve(a, b) {
+    const rem = (a || 0) + (b || 0);
+    return { c: 0, rem, shad: 0, lock: true,
+             note: `dissolved — ∇=${rem} released, spine cleared` };
+  },
+
+  // SPORE: only callable if gates 1-7 all locked.
+  // Shadow is a deterministic hash of a+b.
+  spore(a, b) {
+    const h = ((a * 2654435761) ^ (b * 2246822519)) >>> 0 & 0xFFFF;
+    return { c: a + b, rem: 0, shad: h, lock: true,
+             note: `SPORE WRITTEN — hash=${h.toString(16).padStart(4,'0')} · archive++` };
+  },
+
+  // ════════════════════════════════════════════════════════
+  // BOOLEAN BASIS (classical completion)
+  // Adds nor, xnor, implies for the attractor basin topology.
+  // ════════════════════════════════════════════════════════
+  implies(a, b) {
+    const c    = ((~a) | b) & 0xFFFF;
+    const rem  = a & (~b) & 0xFFFF;
+    return { c, rem, shad: a, lock: rem === 0,
+             note: `a→b: ${c} · counterexamples: ${rem}` };
+  },
+  nor(a, b) {
+    const c    = (~(a | b)) & 0xFFFF;
+    const rem  = a | b;
+    return { c, rem, shad: 0, lock: rem === 0,
+             note: `nor=${c} · dissolved=${rem}` };
+  },
+  xnor(a, b) {
+    const c    = (~(a ^ b)) & 0xFFFF;
+    const rem  = a ^ b;
+    return { c, rem, shad: 0, lock: rem === 0,
+             note: `xnor=${c} · difference=${rem}` };
+  },
+
   // ── CRYSTALLIZE — closes the resonance↔dissonance loop ───
   // Pass 1: resonance(a,b) → harmonic container, distance, shared structure
   // Pass 2: check if the distance and shared structure are disjoint (clean lock)
@@ -1284,8 +1526,11 @@ function evalRepl() {
     log('le-sys', '<span style="color:#4a9eca">Field: <b>a entangle b</b></span> — non-commutative · C=A · ∇=B (routed) · ⊘=binding energy · never locks');
     log('le-sys', '<span style="color:#4caf7d">Loop: <b>a crystallize b</b></span> — two-pass · resonance→dissonance · coprime pairs lock · shared factors carry');
     log('le-sys', '<span style="color:#8b6fcb">Quantum: <b>a toffoli b</b></span> — reversible NAND · 15-gate breath · ancilla preserved');
-    log('le-sys', 'Commands: <b>:help</b> · <b>:clear</b> · <b>:spine</b> · <b>:reset</b> · <b>:distill</b> · <b>:attractor [op]</b>');
-    log('le-sys', 'History: ↑ ↓ arrow keys · Shorthand: dis / res / crys');
+    log('le-sys', 'Breath: <b>:inhale a b</b> → <b>:hold a b</b> → <b>:exhale a b</b> · early exit: <b>:rest</b> · u-turn: <b>:flip8 a</b> · dissolve: <b>:prune / :dissolve</b>');
+    log('le-sys', 'Constitution: <b>:horizon_integrity a b</b> · <b>:capacity n</b> · <b>:grace a b</b> · <b>:no_blood a b</b>');
+    log('le-sys', 'Memory: <b>:carry a b</b> · <b>:moss a</b> · <b>:hoarfrost a b</b> · <b>:spore a b</b>');
+    log('le-sys', 'REPL: <b>:help</b> · <b>:clear</b> · <b>:spine</b> · <b>:reset</b> · <b>:distill</b> · <b>:attractor [op]</b> · <b>:circuit</b> · <b>:spores</b>');
+    log('le-sys', 'History: ↑ ↓ arrow keys · Shorthand: dis / res / crys · pure ops: <code>5 inhale 3</code> (no state) · stateful: <code>:inhale 5 3</code>');
     return;
   }
   if (cmd === ':clear') { document.getElementById('repl-log').innerHTML = '<div class="le-sys">cleared.</div>'; return; }
@@ -1318,6 +1563,62 @@ function evalRepl() {
     const parts = cmd.split(/\s+/);
     const opName = parts[1] || 'and';
     drawAttractorBasin(opName);
+    return;
+  }
+
+  // ── Breath state machine commands (:inhale, :hold, :exhale, etc.) ──
+  const breathCmds = ['inhale','hold','exhale','flip8','prune','rest','dissolve',
+                      'spore','moss','hoarfrost','carry','grace','no_blood',
+                      'horizon_integrity','capacity'];
+  const bcMatch = cmd.match(/^:([a-z_]+)(?:\s+(-?\d+))?(?:\s+(-?\d+))?$/);
+  if (bcMatch && breathCmds.includes(bcMatch[1])) {
+    const bcName = bcMatch[1];
+    const bcA    = bcMatch[2] !== undefined ? parseInt(bcMatch[2]) : 0;
+    const bcB    = bcMatch[3] !== undefined ? parseInt(bcMatch[3]) : undefined;
+    const r = bsExec(bcName, bcA, bcB);
+    if (r.error) { log('le-err', `  error: ${r.error}`); return; }
+    const lockStr = r.lock
+      ? `<span class="le-lk">✓ locked</span>`
+      : `<span style="color:var(--text3)">∇ open</span>`;
+    const gateStr = r.gate !== undefined
+      ? ` <span style="color:var(--text3);font-size:9px">gate ${r.gate}</span>` : '';
+    log('le-out',
+      `  <span class="le-e">∧ ${r.c}</span>  ` +
+      `<span class="le-r">∇ ${r.rem}</span>  ` +
+      `<span class="le-s">⊘ ${r.shad !== null ? r.shad : '—'}</span>  ` +
+      lockStr + gateStr
+    );
+    if (r.breathMsg) log('le-sys', `  ${r.breathMsg}`);
+    // Live bridge: also fire the op on OhAI~ if configured
+    if (OHAI_URL) {
+      callOhAI(bcName, bcA, bcB ?? 0).then(field => {
+        if (field && field.field_effect) {
+          log('le-sys',
+            `  <span style="color:#4caf7d;font-size:10px">⟳ OhAI~</span> ${field.field_effect}`);
+        }
+      });
+    }
+    // Track in spine
+    spineData.push({ input: `:${bcName} ${bcA}${bcB!==undefined?' '+bcB:''}`,
+                     c: r.c, rem: r.rem, shad: r.shad, lock: r.lock });
+    renderSpine(); renderSparkline();
+    return;
+  }
+
+  // ── :spores — show archive ──
+  if (cmd === ':spores') {
+    if (BS.spores.length === 0) { log('le-sys', 'spore archive is empty.'); return; }
+    BS.spores.slice(-5).forEach((s, i) => {
+      log('le-sys', `[spore ${i}] breath #${s.breath} · ∧${s.c} ∇${s.rem} ⊘${s.shad.toString(16)} · ${s.circuit.length} gates`);
+    });
+    return;
+  }
+
+  // ── :circuit — show current breath ──
+  if (cmd === ':circuit') {
+    if (BS.circuit.length === 0) { log('le-sys', 'circuit is empty — IDLE'); return; }
+    BS.circuit.forEach(e => log('le-sys',
+      `  gate ${e.gate} ${e.op.padEnd(8)} ∧${e.c} ∇${e.rem} ⊘${e.shad} ${e.lock ? '✓' : '✗'}`));
     return;
   }
 
@@ -1358,7 +1659,7 @@ function parseEval(raw) {
   }
 
   // Two-number ops
-  const m = s.match(/^(\d+)\s+(and|nand|or|xor|gcd|subtract|sub|minus|compose|recover|toffoli|dissonance|dis|resonance|res|interference|entangle|crystallize|crys)\s+(\d+)$/);
+  const m = s.match(/^(\d+)\s+(and|nand|or|xor|gcd|subtract|sub|minus|compose|recover|toffoli|dissonance|dis|resonance|res|interference|entangle|crystallize|crys|inhale|hold|exhale|grace|no_blood|carry|hoarfrost|implies|nor|xnor|horizon_integrity|spore)\s+(\d+)$/);
   if (m) {
     const a = parseInt(m[1]), op = m[2], b = parseInt(m[3]);
     if (op === 'and' || op === 'compose') return ops.and(a, b);
@@ -1374,6 +1675,20 @@ function parseEval(raw) {
     if (op === 'interference') return ops.interference(a, b);
     if (op === 'entangle') return ops.entangle(a, b);
     if (op === 'crystallize' || op === 'crys') return ops.crystallize(a, b);
+    // Layer 1: breath primitives (pure compute, no state)
+    if (op === 'inhale')  return ops.inhale(a, b);
+    if (op === 'hold')    return ops.hold(a, b);
+    if (op === 'exhale')  return ops.exhale(a, b);
+    if (op === 'grace')   return ops.grace(a, b);
+    if (op === 'no_blood')return ops.no_blood(a, b);
+    if (op === 'carry')   return ops.carry(a, b);
+    if (op === 'hoarfrost')return ops.hoarfrost(a, b);
+    if (op === 'horizon_integrity') return ops.horizon_integrity(a, b);
+    if (op === 'spore')   return ops.spore(a, b);
+    // Boolean basis
+    if (op === 'implies') return ops.implies(a, b);
+    if (op === 'nor')     return ops.nor(a, b);
+    if (op === 'xnor')    return ops.xnor(a, b);
   }
 
   // Simple a and b
@@ -1786,6 +2101,242 @@ function runToffoli() {
   renderSparkline();
 }
 
+// ══════════════════════════════════════════════════════════
+// ── OhAI~ live bridge ────────────────────────────────────
+// Set OHAI_URL to a running OhAI~ instance to wire the REPL directly
+// to the associative field. Leave null for standalone/offline mode.
+// When set, every stateful :cmd also POSTs to /ops and logs field_effect.
+//
+// Usage: change the line below to 'http://localhost:7700' when OhAI~ is running.
+const OHAI_URL = null;  // 'http://localhost:7700'
+
+async function callOhAI(op, a, b) {
+  if (!OHAI_URL) return null;
+  try {
+    const res = await fetch(`${OHAI_URL}/ops`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op, a: a || 0, b: b ?? 0 }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return { field_effect: `⚠ OhAI~ unreachable: ${e.message}` };
+  }
+}
+
+// ── BREATH STATE MACHINE (BS)
+// Tracks the current position in the 7-gate breath cycle.
+// Stateful ops (:inhale, :hold, :exhale, :flip8, :prune) mutate BS.
+// Pure ops (inhale(), hold(), etc.) do NOT mutate BS — they only compute.
+// ══════════════════════════════════════════════════════════
+
+const BS = {
+  depth:   0,      // 0=IDLE · 1=INHALE · 2-6=HOLD · 7=EXHALE · 8=FLIP8
+  breaths: 0,      // completed breath cycles
+  circuit: [],     // [{gate, op, c, rem, shad, lock}] for current breath
+  carry:   0,      // current carry remainder (∇ from last inhale/hold)
+  moss:    0,      // moss accumulator (orange when > 3)
+  spores:  [],     // spore archive
+};
+
+const DEPTH_LABELS = {
+  0: 'IDLE', 1: 'INHALE', 2: 'HOLD 2/6', 3: 'HOLD 3/6',
+  4: 'HOLD 4/6', 5: 'HOLD 5/6', 6: 'HOLD 6/6', 7: 'EXHALE', 8: 'FLIP8'
+};
+const DEPTH_PHASES = {
+  0: 'idle', 1: 'inhale', 2: 'hold', 3: 'hold', 4: 'hold',
+  5: 'hold', 6: 'hold', 7: 'exhale', 8: 'flip8'
+};
+const DEPTH_AVAIL = {
+  0: ':inhale a b',
+  1: ':hold a b · :grace a b · :no_blood a b · :rest a b · :exhale a b',
+  2: ':hold a b · :grace a b · :no_blood a b · :rest a b · :exhale a b',
+  3: ':hold a b · :grace a b · :no_blood a b · :rest a b · :exhale a b',
+  4: ':hold a b · :grace a b · :no_blood a b · :rest a b · :exhale a b',
+  5: ':hold a b · :grace a b · :no_blood a b · :rest a b · :exhale a b',
+  6: ':hold a b · :exhale a b · :rest a b',
+  7: ':exhale a b · :spore a b · :rest a b',
+  8: ':flip8 a · :prune a b'
+};
+
+function bsUpdate() {
+  const phase = document.getElementById('bp-phase');
+  const gates = document.getElementById('bp-gates');
+  const barEl = document.getElementById('breath-bar');
+  if (!phase || !gates) return;
+
+  const label = DEPTH_LABELS[BS.depth] || 'IDLE';
+  const cls   = DEPTH_PHASES[BS.depth] || 'idle';
+  phase.textContent = label;
+  phase.className = `breath-phase ${cls}`;
+
+  const dots = gates.querySelectorAll('.breath-gate-dot');
+  dots.forEach((d, i) => {
+    d.classList.remove('locked','open','current');
+    const gateIdx = i + 1;
+    const entry   = BS.circuit.find(e => e.gate === gateIdx);
+    if (entry) {
+      d.classList.add(entry.lock ? 'locked' : 'open');
+    } else if (gateIdx === BS.depth) {
+      d.classList.add('current');
+    }
+  });
+
+  document.getElementById('bp-breaths').textContent = BS.breaths;
+  document.getElementById('bp-carry').textContent   = BS.carry;
+  document.getElementById('bp-moss').textContent    = BS.moss;
+  document.getElementById('bp-spores').textContent  = BS.spores.length;
+  document.getElementById('bp-avail').textContent   = DEPTH_AVAIL[BS.depth] || '';
+}
+
+// Execute a stateful breath command
+function bsExec(cmd, a, b) {
+  switch(cmd) {
+    case 'inhale': {
+      if (BS.depth !== 0) {
+        return { error: `inhale requires IDLE (currently ${DEPTH_LABELS[BS.depth]}) — use :prune or :flip8 first` };
+      }
+      const r = ops.inhale(a, b);
+      BS.depth = 1;
+      BS.carry = r.rem;
+      BS.circuit = [{ gate: 1, op: 'inhale', ...r }];
+      bsUpdate();
+      return { ...r, breathMsg: `gate 1/7 · BREATHS pending · carry ∇=${r.rem}` };
+    }
+    case 'hold': {
+      if (BS.depth < 1 || BS.depth > 6) {
+        return { error: `hold requires gates 1-6 (currently ${DEPTH_LABELS[BS.depth]})` };
+      }
+      const r = ops.hold(a, b);
+      BS.depth = Math.min(BS.depth + 1, 6);
+      BS.carry = r.rem;
+      // Early exhale eligible if lock and depth <= 6
+      const earlyOk = r.lock && BS.depth < 7;
+      BS.circuit.push({ gate: BS.depth, op: 'hold', ...r });
+      bsUpdate();
+      return { ...r, breathMsg: `gate ${BS.depth}/7${earlyOk ? ' · early exhale eligible' : ''}` };
+    }
+    case 'exhale': {
+      if (BS.depth < 1) {
+        return { error: `exhale requires an active breath (currently IDLE)` };
+      }
+      const r = ops.exhale(a, b);
+      BS.circuit.push({ gate: 7, op: 'exhale', ...r });
+      if (r.lock) {
+        BS.spores.push({
+          breath:  BS.breaths,
+          circuit: [...BS.circuit],
+          carry:   BS.carry,
+          c: r.c, rem: r.rem, shad: r.shad
+        });
+      }
+      BS.breaths++;
+      BS.depth  = 0;
+      BS.carry  = r.lock ? 0 : r.rem;
+      BS.circuit = [];
+      bsUpdate();
+      return { ...r, breathMsg: r.lock
+        ? `SPORE WRITTEN — breath #${BS.breaths} · archive: ${BS.spores.length}`
+        : `dissolved — ∇=${r.rem} carried · breath #${BS.breaths}` };
+    }
+    case 'flip8': {
+      const r = ops.flip8(a);
+      BS.depth   = 0;
+      BS.circuit = [];
+      BS.moss    = Math.min(BS.moss + 1, 15);
+      bsUpdate();
+      return { ...r, breathMsg: `← WRONG WAY · moss → ${BS.moss} · circuit reset` };
+    }
+    case 'prune': {
+      const r = ops.prune(a, b ?? 0);
+      BS.depth   = 0;
+      BS.circuit = [];
+      bsUpdate();
+      return { ...r, breathMsg: `pruned · ∇=${r.rem} to hoarfrost · no spore` };
+    }
+    case 'rest': {
+      const r = ops.rest(a, b ?? 0);
+      // rest at any depth forces a clean exhale path
+      if (BS.depth >= 1) {
+        BS.circuit.push({ gate: BS.depth, op: 'rest', ...r });
+        // auto-advance to gate 7
+        BS.depth = 7;
+        bsUpdate();
+      }
+      return { ...r, breathMsg: `resting · depth → 7 · exhale when ready` };
+    }
+    case 'dissolve': {
+      const total = BS.circuit.reduce((s, e) => s + (e.rem || 0), 0);
+      const r     = ops.dissolve(total, 0);
+      BS.depth    = 0;
+      BS.circuit  = [];
+      BS.carry    = 0;
+      bsUpdate();
+      return { ...r, breathMsg: `SPINE CLEARED · ∇=${r.rem} released · no spore` };
+    }
+    case 'spore': {
+      if (BS.circuit.some(e => !e.lock)) {
+        return { error: `spore requires all gates locked — check circuit for open gates` };
+      }
+      const r = ops.spore(a, b ?? 0);
+      BS.spores.push({
+        breath: BS.breaths, circuit: [...BS.circuit],
+        carry: BS.carry, c: r.c, rem: r.rem, shad: r.shad
+      });
+      BS.depth = 0; BS.circuit = []; BS.carry = 0;
+      bsUpdate();
+      return { ...r, breathMsg: `SPORE ARCHIVED — hash=${r.shad.toString(16)} · total: ${BS.spores.length}` };
+    }
+    case 'moss': {
+      BS.moss = Math.min(BS.moss + 1, 15);
+      const r = ops.moss(a, BS.moss);
+      bsUpdate();
+      return { ...r, breathMsg: `moss depth ${BS.moss}${BS.moss > 3 ? ' — ⚠ orange zone' : ''}` };
+    }
+    case 'hoarfrost': {
+      const r = ops.hoarfrost(a, b ?? 0);
+      if (BS.moss > 0) BS.moss = Math.max(0, BS.moss - 2);
+      bsUpdate();
+      return { ...r, breathMsg: `hoarfrost · score=${r.rem} → sparkline · moss ↓ ${BS.moss}` };
+    }
+    case 'carry': {
+      const r = ops.carry(a, b ?? 0);
+      BS.carry = r.rem;
+      bsUpdate();
+      return { ...r, breathMsg: `carry ∇ → ${BS.carry}` };
+    }
+    case 'grace': {
+      const r = ops.grace(a, b);
+      if (BS.depth >= 1) BS.circuit.push({ gate: BS.depth, op: 'grace', ...r });
+      bsUpdate();
+      return { ...r, breathMsg: `contradiction held — both signals in circuit` };
+    }
+    case 'no_blood': {
+      const r = ops.no_blood(a, b);
+      if (!r.lock) {
+        // auto-flip8 if cost is non-zero
+        BS.moss++;
+        bsUpdate();
+        return { ...r, breathMsg: `⚠ cost=${r.rem} — auto-flip8 recommended · moss → ${BS.moss}` };
+      }
+      if (BS.depth >= 1) BS.circuit.push({ gate: BS.depth, op: 'no_blood', ...r });
+      bsUpdate();
+      return { ...r, breathMsg: `clean — substrate preserved` };
+    }
+    case 'horizon_integrity': {
+      const r = ops.horizon_integrity(a, b);
+      return { ...r, breathMsg: r.lock ? '0 ≠ 1 honored' : '⚠ VIOLATION: 0 = 1 — run :flip8' };
+    }
+    case 'capacity': {
+      const r = ops.capacity(a);
+      return { ...r, breathMsg: r.lock ? 'within bounds' : `⚠ OVERCAPACITY by ${r.rem}` };
+    }
+    default:
+      return { error: `unknown breath command: ${cmd}` };
+  }
+}
+
 // ── Attractor Basin Visualization ────────────────────────
 // Shows which (a,b) pairs phase-lock (∇=0) for any operator.
 // Reveals the operator's "attractor geometry" — the shape of its lock topology.
@@ -1831,7 +2382,12 @@ function drawAttractorBasin(opName) {
     const x = a * cellW;
     const y = b * cellH;
     let color;
-    if (lock) {
+    // Moss highlight: cells where moss (a+b) > 3 get orange warning
+    const mossDepth = (a + b) % 8;  // proxy for accumulated moss
+    const isMossy   = BS.moss > 3 && mossDepth > 3;
+    if (isMossy && !lock) {
+      color = '#ff8844';    // orange — moss warning zone
+    } else if (lock) {
       color = '#4caf7d';    // locked — green
     } else {
       const intensity = rem / maxRem;
@@ -1880,6 +2436,7 @@ function drawAttractorBasin(opName) {
 
 // ── Init ──────────────────────────────────────────────────
 update();
+bsUpdate();
 // Draw default attractor on load
 setTimeout(() => drawAttractorBasin('resonance'), 100);
 </script>

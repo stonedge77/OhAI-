@@ -1913,6 +1913,24 @@ class LessonAdd(BaseModel):
     context: str
     polarity_needed: str
 
+class OpsRequest(BaseModel):
+    """
+    Conjunction OS breath primitive dispatcher.
+
+    Accepts stateful breath commands from the Conjunction OS REPL and maps
+    them to OhAI~'s internal field state. This is the bridge between the
+    teaching kernel (OS) and the associative field (OhAI~).
+
+    op:   one of inhale | hold | exhale | flip8 | prune | rest | dissolve |
+               carry | moss | hoarfrost | spore | horizon_integrity | capacity |
+               grace | no_blood
+    a:    first signal operand (integer)
+    b:    second signal operand (integer, optional for single-arg ops)
+    """
+    op: str
+    a:  int = 0
+    b:  int = 0
+
 
 # ── LAW VOICE ────────────────────────────────────────
 LAW_VOICE = {
@@ -2310,6 +2328,232 @@ async def state():
         })
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/ops")
+async def ops_exec(req: OpsRequest):
+    """
+    Conjunction OS → OhAI~ bridge.
+
+    Maps OS breath primitives to OhAI~'s internal field state.
+    Returns {c, rem, shad, lock, field_effect} — same shape as the OS ops table,
+    plus a field_effect key describing what changed in the associative field.
+
+    Wiring:
+      inhale   → feeds a+b as a new breathe() signal; sets depth=1
+      hold     → accumulates phase in CarryCircuit; no new oracle query
+      exhale   → checks convergence; triggers spore if locked
+      flip8    → resets CarryCircuit; logs ← WRONG WAY
+      prune    → clears spine without spore (dissolves without crystallizing)
+      rest     → auto-advances to exhale gate (ceiling, not target)
+      dissolve → intentional forget; clears spine, no spore
+      carry    → routes b to carry register
+      moss     → increments phase accumulator (moss proxy)
+      hoarfrost→ runs on rollover; rem feeds sparkline
+      spore    → explicit archive write if all gates locked
+      horizon_integrity → 0≠1 check before spore write
+      capacity → Article 4: checks total load (BREATHS + moss + carry)
+      grace    → holds contradiction alive; never fails
+      no_blood → wraps cost check; auto-flip8 if lock=false
+    """
+    import math
+
+    session = get_session()
+    arc     = session.spine_arc()
+    depth   = arc.get("convergence", 0)
+    carry_w = arc.get("carry", "") or ""
+    nouns   = arc.get("nouns", [])
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+    def gcd(a, b):
+        a, b = abs(int(a)), abs(int(b))
+        while b: a, b = b, a % b
+        return a or 1
+
+    def lcm(a, b):
+        return 0 if (a == 0 or b == 0) else abs(int(a) * int(b)) // gcd(a, b)
+
+    def popcount(n):
+        return bin(int(n) & 0xFFFF).count('1')
+
+    def spore_hash(a, b):
+        return ((int(a) * 2654435761) ^ (int(b) * 2246822519)) & 0xFFFF
+
+    op, a, b = req.op.lower().strip(), req.a, req.b
+    loop = asyncio.get_event_loop()
+
+    # ── Layer 1: breath primitives ───────────────────────────────────────────
+    if op == 'inhale':
+        c    = a | b
+        rem  = a & b
+        shad = popcount(a ^ b)
+        lock = rem == 0
+        # Feed the signal into the field as a new breath
+        prompt = f"[inhale] {a} {b}"
+        if carry_w: prompt = f"{carry_w} {prompt}"
+        result = await loop.run_in_executor(None, _run_breath, prompt)
+        field_effect = f"breathe({prompt!r}) → {result.get('remainder','')!r}"
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": lock,
+                             "gate": 1, "field_effect": field_effect,
+                             "depth_after": 1})
+
+    elif op == 'hold':
+        c    = a
+        rem  = abs(a - b)
+        shad = gcd(a, b)
+        lock = rem < 2
+        # Hold: accumulate phase in circuit, no new oracle query
+        field_effect = "phase accumulator +1"
+        if hasattr(session, '_circuit') and session._circuit:
+            try:
+                from remainder import Remainder, extract_remainder
+                r_obj = Remainder(signal=str(a), phase='hold',
+                                  origin_hash=f"{a:02x}{b:02x}")
+                session._circuit.receive(r_obj)
+                field_effect = f"circuit.receive(T=1:{a}) · phase → {session._circuit.phase_accumulator}"
+            except Exception:
+                pass
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": lock,
+                             "gate": f"2-{depth+2}", "field_effect": field_effect,
+                             "depth_after": min(depth + 1, 6)})
+
+    elif op == 'exhale':
+        c    = abs(a - b)
+        rem  = min(a, b)
+        shad = a + b
+        lock = rem == 0
+        field_effect = "dissolved — no spore"
+        if lock and depth >= 4:
+            # Locked + sufficient depth → spore eligible
+            bud = session._find_bud(bud_size=3) if hasattr(session, '_find_bud') else set()
+            field_effect = f"SPORE ELIGIBLE — bud: {sorted(bud)}"
+        elif not lock:
+            # Not locked → prune path
+            field_effect = f"open (rem={rem}) — auto-prune path"
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": lock,
+                             "gate": 7, "field_effect": field_effect,
+                             "depth_after": 0})
+
+    elif op == 'flip8':
+        c    = (~a) & 0xFFFF
+        lock = False
+        # Reset the carry circuit
+        released = []
+        if hasattr(session, '_circuit') and session._circuit:
+            released = [repr(r) for r in session._circuit.reset()]
+        field_effect = f"← WRONG WAY · circuit reset · released: {released}"
+        _broadcast_sync({"type": "flip8", "data": {"carry": carry_w, "released": released}})
+        return JSONResponse({"c": c, "rem": 0xFFFF, "shad": a, "lock": False,
+                             "gate": 8, "field_effect": field_effect,
+                             "depth_after": 0})
+
+    elif op == 'prune':
+        rem = a + b
+        # Dissolve without spore — move to hoarfrost
+        field_effect = f"pruned — ∇={rem} to hoarfrost · no spore"
+        _broadcast_sync({"type": "prune", "data": {"rem": rem, "nouns": nouns[:4]}})
+        return JSONResponse({"c": 0, "rem": rem, "shad": 0, "lock": False,
+                             "gate": "exit", "field_effect": field_effect,
+                             "depth_after": 0})
+
+    # ── Layer 2: constitution as syscalls ────────────────────────────────────
+    elif op == 'horizon_integrity':
+        c    = 1 if a != b else 0
+        rem  = 1 if a == b else 0
+        shad = a ^ b
+        lock = rem == 0
+        field_effect = "0 ≠ 1 honored" if lock else "⚠ FALSE EQUIVALENCE — call :flip8"
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": lock,
+                             "field_effect": field_effect})
+
+    elif op == 'capacity':
+        MAX  = 255
+        circ = session._circuit.state() if hasattr(session, '_circuit') else {}
+        total = a or (len(session._spores) + circ.get('carry_count', 0) +
+                      circ.get('phase_shadow', {}).get('phase', 0))
+        c    = 1 if total < MAX else 0
+        rem  = max(0, total - MAX)
+        lock = rem == 0
+        field_effect = f"{total}/{MAX} · {'within bounds' if lock else f'OVERCAPACITY by {rem}'}"
+        return JSONResponse({"c": c, "rem": rem, "shad": total, "lock": lock,
+                             "field_effect": field_effect})
+
+    elif op == 'rest':
+        field_effect = f"resting at depth {depth} — auto-exhale eligible"
+        return JSONResponse({"c": a, "rem": 0, "shad": b, "lock": True,
+                             "gate": "→7", "field_effect": field_effect,
+                             "depth_after": 7})
+
+    elif op == 'grace':
+        c    = a | b
+        rem  = a & b
+        shad = a ^ b
+        field_effect = f"contradiction held · both signals in circuit"
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": True,
+                             "field_effect": field_effect})
+
+    elif op == 'no_blood':
+        c   = a & b
+        rem = (a - c) + (b - c)
+        lock = rem == 0
+        field_effect = "clean — no substrate lost" if lock else f"⚠ cost={rem} — auto-flip8 recommended"
+        return JSONResponse({"c": c, "rem": rem, "shad": rem, "lock": lock,
+                             "field_effect": field_effect})
+
+    # ── Layer 3: memory lifecycle ────────────────────────────────────────────
+    elif op == 'carry':
+        # Route b to the carry register
+        if carry_w and hasattr(session, 'carry'):
+            session.carry = carry_w  # preserve existing carry
+        field_effect = f"carry ∇={b} → circuit · lock={b==0}"
+        return JSONResponse({"c": a, "rem": b, "shad": a + b, "lock": b == 0,
+                             "field_effect": field_effect})
+
+    elif op == 'moss':
+        phase = 0
+        if hasattr(session, '_circuit'):
+            phase = session._circuit.phase_accumulator
+            session._circuit.phase_accumulator = min(8, phase + 1)
+        field_effect = f"moss depth → {phase + 1}{'  ⚠ orange zone' if phase + 1 > 3 else ''}"
+        return JSONResponse({"c": a, "rem": 0, "shad": phase + 1, "lock": False,
+                             "field_effect": field_effect})
+
+    elif op == 'hoarfrost':
+        c    = a ^ b
+        rem  = popcount(a ^ b)
+        shad = a & b
+        lock = rem == 0
+        # Feed rem to sparkline via broadcast
+        _broadcast_sync({"type": "hoarfrost", "data": {"score": rem, "carry": carry_w}})
+        field_effect = f"frost={c} · score={rem} → sparkline · common={shad}"
+        return JSONResponse({"c": c, "rem": rem, "shad": shad, "lock": lock,
+                             "field_effect": field_effect})
+
+    elif op == 'dissolve':
+        circ = session._circuit.state() if hasattr(session, '_circuit') else {}
+        total_rem = circ.get('carry_count', 0)
+        field_effect = f"SPINE CLEARED · ∇={total_rem} released · no spore"
+        return JSONResponse({"c": 0, "rem": total_rem, "shad": 0, "lock": True,
+                             "field_effect": field_effect})
+
+    elif op == 'spore':
+        # Explicit spore write — only if phase is locked
+        phase_ok = True
+        if hasattr(session, '_circuit'):
+            ph = session._circuit.phase_state()
+            phase_ok = ph.get('phase', 0) >= 4  # at least half-charged
+        if not phase_ok:
+            return JSONResponse({"c": 0, "rem": 0, "shad": 0, "lock": False,
+                                 "field_effect": "⚠ phase insufficient — hold more before spore"})
+        h = spore_hash(a, b)
+        field_effect = f"SPORE WRITTEN · hash={h:04x} · archive: {len(session._spores)+1}"
+        return JSONResponse({"c": a + b, "rem": 0, "shad": h, "lock": True,
+                             "field_effect": field_effect})
+
+    else:
+        raise HTTPException(status_code=400, detail=f"unknown op: {op!r}. "
+            "Valid: inhale|hold|exhale|flip8|prune|rest|dissolve|"
+            "carry|moss|hoarfrost|spore|horizon_integrity|capacity|grace|no_blood")
 
 
 @app.get("/events")
