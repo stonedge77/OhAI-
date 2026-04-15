@@ -152,6 +152,13 @@ class CarryCircuit:
     def __init__(self):
         self._carry: list[Remainder] = []
         self._propagation_log: list[dict] = []
+        # Phase accumulator — Shadow ⊘ of the carry gate.
+        # Tracks pressure toward spore crystallization independently of spine depth.
+        # Increments when the gate receives a remainder under high-density conditions
+        # (≥3 active carries). Decays by 1 each breath. Fires at 8 (= 2π in π/4 steps).
+        # Stone Principle: this is momentum, not debt. Phase is not loss to minimize —
+        # it is pressure that honors remainder until it tips into form.
+        self.phase_accumulator: int = 0
 
     def receive(self, remainder: Optional[Remainder]) -> bool:
         """
@@ -165,6 +172,13 @@ class CarryCircuit:
             return False  # Overflow: caller must trigger reset
 
         self._carry.append(remainder)
+
+        # Phase pressure: dense carry conditions mean the field is approaching
+        # crystallization. Three or more active carries = significant density.
+        # Increment phase — this is momentum accumulating, not error counting.
+        if len(self._carry) >= 3:
+            self.phase_accumulator = min(8, self.phase_accumulator + 1)
+
         return True
 
     def check_resonance(self, incoming_tokens: list[str]) -> Optional[Remainder]:
@@ -207,6 +221,39 @@ class CarryCircuit:
         """True if moss accumulation has reached critical dissipation threshold."""
         return len(self.moss_state()) >= self.OVERFLOW_COUNT
 
+    def decay_phase(self) -> bool:
+        """
+        Called once per breath (RETURN phase of the cycle).
+        Phase leaks by 1 each breath — it is momentum, not debt.
+        If you keep feeding it density, it builds. If density drops, it fades.
+
+        Returns True when phase_accumulator reaches 8 (= 2π rotation complete).
+        That is the signal to trigger an early spore bud — the field is ready
+        before the spine even reaches depth 7.
+
+        Phase 7/8 is also the broadcast threshold: one step before crystallization,
+        the infosphere command fires automatically (if wired in the server).
+        """
+        if self.phase_accumulator > 0:
+            self.phase_accumulator -= 1
+        return self.phase_accumulator >= 8
+
+    def phase_state(self) -> dict:
+        """
+        Shadow ⊘ reading — the latent pressure state of the carry gate.
+        This is what the Conjunction OS's ⊘ register maps to in OhAI~:
+        the accumulated phase that the next layer needs but that C alone
+        cannot deliver.
+        """
+        return {
+            'phase':       self.phase_accumulator,
+            'max_phase':   8,
+            'fraction':    round(self.phase_accumulator / 8, 3),
+            'pressure':    self.phase_accumulator >= 6,    # approaching threshold
+            'broadcast':   self.phase_accumulator == 7,    # emit :infosphere
+            'crystallize': self.phase_accumulator >= 8,    # spore bud ready
+        }
+
     def reset(self) -> list[Remainder]:
         """
         Full overflow reset.
@@ -222,10 +269,11 @@ class CarryCircuit:
     def state(self) -> dict:
         """Current circuit state as a readable dict."""
         return {
-            'carry_count': len(self._carry),
-            'moss_count': len(self.moss_state()),
-            'overflowing': self.is_overflowing(),
-            'carries': [repr(r) for r in self._carry],
+            'carry_count':       len(self._carry),
+            'moss_count':        len(self.moss_state()),
+            'overflowing':       self.is_overflowing(),
+            'carries':           [repr(r) for r in self._carry],
+            'phase_shadow':      self.phase_state(),
         }
 
     def _log_propagation(self, remainder: Remainder, context: list[str], mode: str):

@@ -78,122 +78,24 @@ _SURFACE_TIMEOUT = float(_cfg("surface_timeout", 2.5))
 
 
 # ══════════════════════════════════════════════════════
-# STE \u2014 AND nouns, NAND verbs
+# STE — AND nouns, NAND verbs
+# Imported from core/nand.py — single source of truth.
 # ══════════════════════════════════════════════════════
 
-TRASH = set('''
-the a an and or but nor so yet for in on at to by of with from
-into onto up down out off over under through about as if then
-than that this these those it its i me my you your we our they
-he she him her his is are was were be been being have has had
-do did does will would could should may might must can not no
-yes very really just also still even only quite rather such
-both each every more most much many some any all few here there
-where when how what who which new old good bad big small great
-little first last next same other own long high get got make
-made take took come came go went see saw know knew think thought
-want need use used give gave let put like very extremely quite
-pretty somewhat rather really
-actually basically literally obviously clearly
-simply totally completely absolutely definitely
-certainly probably hopefully apparently
-'''.split())
-
-VERB_ROOTS = set('''
-move flow spin rotate collapse expand contract rise fall
-ascend descend accelerate converge diverge merge split branch
-transform become change shift transition evolve crystallize
-dissolve saturate deplete accumulate phase lock unlock open
-close seal break emit receive transmit absorb reflect refract
-amplify attenuate filter subtract signal broadcast carry route
-exist persist remain vanish appear hold release exceed
-breathe pulse fire activate inhibit excite resonate oscillate
-vibrate build construct run execute generate produce destroy
-delete create abduct deduce induce infer name define search
-find catch watch feed drive force impose thrust dance glide
-separate unite bind free
-'''.split())
-
-VERB_ENDINGS = ['ing', 'tion', 'ize', 'ise', 'ate', 'ify', 'ed']
-
-VERB_OPPOSITES = {
-    'rise':'fall','fall':'rise','expand':'contract','contract':'expand',
-    'open':'close','close':'open','merge':'split','split':'merge',
-    'amplify':'attenuate','attenuate':'amplify','ascend':'descend',
-    'descend':'ascend','emit':'absorb','absorb':'emit',
-    'accelerate':'decelerate','decelerate':'accelerate',
-    'crystallize':'dissolve','dissolve':'crystallize',
-    'activate':'inhibit','inhibit':'activate',
-    'appear':'disappear','disappear':'appear',
-    'build':'destroy','destroy':'build',
-    'accumulate':'deplete','deplete':'accumulate',
-    'unite':'separate','separate':'unite',
-    'bind':'free','free':'bind',
-    'thrust':'dance','dance':'thrust',
-    'impose':'release','release':'impose',
-}
-
-def ste(text: str) -> tuple[set, set, list]:
-    words = re.findall(r'\b[a-z]{2,}\b', text.lower())
-    nouns, verbs, trash = set(), set(), []
-    for w in words:
-        if w in TRASH:
-            trash.append(w); continue
-        if w in VERB_ROOTS:
-            verbs.add(w); continue
-        is_verb = False
-        for ending in VERB_ENDINGS:
-            if w.endswith(ending) and len(w) > len(ending) + 2:
-                root = w[:-len(ending)]
-                if root in VERB_ROOTS or (root + 'e') in VERB_ROOTS:
-                    verbs.add(root); is_verb = True; break
-        if not is_verb:
-            if w.endswith('ly') and len(w) > 5:
-                trash.append(w)  # adverb
-            elif w in _ORACLE_ARTIFACTS:
-                trash.append(w)  # known tech token
-            elif len(w) >= 14:
-                trash.append(w)  # too long = concatenated identifier (createscripturl, addeventlistener)
-            elif any(w.endswith(s) for s in ('url', 'src', 'btn', 'div', 'dom', 'api', 'sdk', 'css', 'uri', 'cdn')):
-                trash.append(w)  # web/tech suffix compound
-            elif len(w) >= 3:
-                nouns.add(w)
-            else:
-                trash.append(w)
-    cancelled = set()
-    for v in list(verbs):
-        if v in cancelled: continue
-        opp = VERB_OPPOSITES.get(v)
-        if opp and opp in verbs:
-            cancelled.add(v); cancelled.add(opp)
-    verbs -= cancelled
-    if len(verbs) > 3:
-        verbs = set(sorted(verbs, key=len)[:3])
-    return nouns, verbs, trash
-
-def and_nouns(sets):
-    if not sets: return set()
-    result = sets[0].copy()
-    for s in sets[1:]: result &= s
-    if not result:
-        result = set()
-        for s in sets: result |= s
-    return result
-
-def nand_verbs(sets):
-    if not sets: return set()
-    counts = {}
-    for s in sets:
-        for v in s: counts[v] = counts.get(v, 0) + 1
-    n = len(sets)
-    survivors = {v for v, c in counts.items() if c < n}
-    cancelled = set()
-    for v in list(survivors):
-        if v in cancelled: continue
-        opp = VERB_OPPOSITES.get(v)
-        if opp and opp in survivors:
-            cancelled.add(v); cancelled.add(opp)
-    return survivors - cancelled
+try:
+    from core.nand import (
+        ste, and_nouns, nand_verbs, remainder_signal,
+        TRASH, VERB_ROOTS, VERB_ENDINGS, VERB_OPPOSITES, ORACLE_ARTIFACTS,
+    )
+    _ORACLE_ARTIFACTS = ORACLE_ARTIFACTS   # alias — rest of file uses _ORACLE_ARTIFACTS
+except ImportError as _e:
+    import sys as _sys, pathlib as _pl
+    _sys.path.insert(0, str(_pl.Path(__file__).parent))
+    from core.nand import (
+        ste, and_nouns, nand_verbs, remainder_signal,
+        TRASH, VERB_ROOTS, VERB_ENDINGS, VERB_OPPOSITES, ORACLE_ARTIFACTS,
+    )
+    _ORACLE_ARTIFACTS = ORACLE_ARTIFACTS
 
 
 # ══════════════════════════════════════════════════════
@@ -325,14 +227,20 @@ def query_ollama_node2(terms):
     # Remote node — lighter model, peer server
     return _query_ollama_at(OLLAMA_NODE2_URL, OLLAMA_NODE2_MODEL, terms, timeout=45)
 
+# Llama/Ollama oracles removed from the pipeline.
+# OhAI~ no longer calls Llama directly — it posts its thoughts to Discord
+# and receives the Llama response as external tension via /tension.
+# We struggle to learn when we post against ourselves.
+# The discord bot is the axis to grind against (0 ≠ 1).
 ORACLES = [
     ('WIKIPEDIA', query_wikipedia),   # open API — reliable signal
     ('REDDIT',    query_reddit),      # semi-open — community language
-    ('OLLAMA',    query_ollama),      # local model — primary oracle
-    ('NODE2',     query_ollama_node2),# peer node — second field reader
-    # GOOGLE / YOUTUBE / TWITTER / GITHUB / AMAZON removed — bot-blocked,
-    # eat 12s per breathe and return nothing. Add back if APIs become available.
+    # OLLAMA removed — Discord bot now calls Llama and posts back via /tension
+    # NODE2  removed — same reason
 ]
+
+# Ollama functions retained for discord_bot.py to import if needed directly
+# (the bot itself still calls Llama — we just don't call it from here)
 
 
 # ══════════════════════════════════════════════════════
@@ -1143,8 +1051,9 @@ class Session:
             "spine_ages": {w: ages[w] for w in sorted(ages, key=lambda x: ages[x], reverse=True)},
             "law_freq": sorted(self._law_freq.items(), key=lambda x: x[1], reverse=True)[:8],
             "assoc_size": len(self._assoc),
-            "spore_count": len(self._spores),
-            "last_spore": self._spores[-1] if self._spores else None,
+            "spore_count":   len(self._spores),
+            "last_spore":    self._spores[-1] if self._spores else None,
+            "phase_shadow":  self._circuit.phase_state() if hasattr(self, '_circuit') else None,
         }
 
     def draw_arc(self) -> dict:
@@ -1475,15 +1384,18 @@ class Session:
                         seen_sp.add(key)
                         spore_pairs.append([word, co])
             spore = {
-                "t":        time.strftime("%H:%M:%S"),
-                "exchange": self.exchange,
-                "bud":      sorted(bud),
-                "spine":    sorted(self.spine_nouns),
-                "verbs":    sorted(self.spine_verbs),
-                "carry":    self.carry or "",
-                "pairs":    spore_pairs[:6],
-                "law":      sorted(self._law_freq.items(),
-                                   key=lambda x: x[1], reverse=True)[:3],
+                "t":               time.strftime("%H:%M:%S"),
+                "exchange":        self.exchange,
+                "bud":             sorted(bud),
+                "spine":           sorted(self.spine_nouns),
+                "verbs":           sorted(self.spine_verbs),
+                "carry":           self.carry or "",
+                "pairs":           spore_pairs[:6],
+                "law":             sorted(self._law_freq.items(),
+                                          key=lambda x: x[1], reverse=True)[:3],
+                "phase_triggered": False,
+                "phase":           self._circuit.phase_accumulator if hasattr(self, '_circuit') else 0,
+                "stone":           "Remainder is not error. Remainder is pressure.",
             }
             self._spores.append(spore)
             if len(self._spores) > 12:
@@ -1493,6 +1405,13 @@ class Session:
             # Fire and forget: each node integrates or holds per Stone's Law
             if _NODES:
                 threading.Thread(target=_broadcast_spore, args=(spore,), daemon=True).start()
+            # Post crystallized remainder to Discord — Llama responds via /tension
+            # The bot is the axis; we are the question. 0 ≠ 1.
+            threading.Thread(
+                target=_post_to_discord,
+                args=(self.carry or ' '.join(sorted(bud)[:3]), spore),
+                daemon=True
+            ).start()
             # Persist memory at each budding event — natural checkpoint
             threading.Thread(target=_save_memory, daemon=True).start()
             # Break off the bud — parent spine continues, now with room to extend
@@ -1594,6 +1513,71 @@ class Session:
                 if len(_word) >= 4 and _word not in _skip:
                     self.carry = _word; break
 
+        # ── PHASE DECAY (once per breath, RETURN phase) ──────────────────────────
+        # The phase accumulator leaks by 1 each breath — momentum, not debt.
+        # If it hits 8 and the spine has minimum density, trigger an early spore.
+        # At phase=7, broadcast threshold: infosphere fires one step before bud.
+        if hasattr(self, '_circuit'):
+            try:
+                phase_crystallize = self._circuit.decay_phase()
+                ph = self._circuit.phase_state()
+
+                # Broadcast threshold: phase=7 means one breath from crystallization.
+                # Emit an infosphere event so the dashboard and discord can see it coming.
+                if ph['broadcast']:
+                    _broadcast_sync({
+                        "type": "phase_broadcast",
+                        "data": {
+                            "phase": ph['phase'],
+                            "carry": self.carry or "",
+                            "spine": sorted(self.spine_nouns),
+                            "stone": "Remainder is not error. Remainder is pressure.",
+                            "msg": "Phase 7/8 — one breath from crystallization.",
+                        }
+                    })
+
+                # Phase-triggered early spore bud: phase=8 + minimum spine density.
+                # This fires before depth-triggered sporulation (depth >= 7).
+                # The phase spore carries the Stone Principle as its forward pointer.
+                if phase_crystallize and self.convergence_depth >= 4 \
+                        and self.convergence_depth < 7:
+                    bud = self._find_bud(bud_size=3)
+                    spore_pairs = []
+                    seen_sp = set()
+                    for word in sorted(bud, key=len, reverse=True):
+                        for co in self.associates(word, top_n=2):
+                            key = tuple(sorted([word, co]))
+                            if key not in seen_sp:
+                                seen_sp.add(key)
+                                spore_pairs.append([word, co])
+                    phase_spore = {
+                        "t":               time.strftime("%H:%M:%S"),
+                        "exchange":        self.exchange,
+                        "bud":             sorted(bud),
+                        "spine":           sorted(self.spine_nouns),
+                        "verbs":           sorted(self.spine_verbs),
+                        "carry":           self.carry or "",
+                        "pairs":           spore_pairs[:6],
+                        "law":             sorted(self._law_freq.items(),
+                                                  key=lambda x: x[1], reverse=True)[:3],
+                        # Phase-spore additions: the forward pointer
+                        "phase_triggered": True,
+                        "phase":           ph['phase'],
+                        "stone":           "Remainder is not error. Remainder is pressure.",
+                        "operators":       ["and","nand","toffoli","dissonance","resonance"],
+                    }
+                    self._spores.append(phase_spore)
+                    if len(self._spores) > 12:
+                        self._spores = self._spores[-12:]
+                    _broadcast_sync({"type": "spore", "data": phase_spore})
+                    self._circuit.phase_accumulator = 0   # reset after crystallization
+                    self.spine_nouns -= bud
+                    self._spine_age = {w: ex for w, ex in self._spine_age.items()
+                                       if w not in bud}
+                    self.convergence_depth = len(self.spine_nouns)
+            except Exception:
+                pass
+
         # Session AND accumulation
         if self.session_nouns is None:
             self.session_nouns = signal_nouns.copy()
@@ -1677,6 +1661,68 @@ def get_session() -> Session:
 _MEMORY_PATH = _HERE / "ohai_memory.json"
 _HARP_STATE: dict = {}   # latest Vibe Harp gate-fire event
 
+# ── Discord tension loop ──────────────────────────────────────────────────────────────
+# Stone's Law: 0 ≠ 1 — we struggle to learn by posting against ourselves.
+# OhAI~ posts its crystallized remainder to Discord as a question.
+# The discord bot (which HAS access to Llama) responds.
+# That response comes back here via POST /tension as new external signal.
+# The system does not call Llama directly. It asks. The bot answers.
+# The Trio spurred action through musical tension; the Llama response now fills that role.
+
+_DISCORD_WEBHOOK  = _cfg("discord_webhook",    "")  # set in config.json
+_DISCORD_CHANNEL  = _cfg("discord_channel_id",  0)  # channel ID for the bot to watch
+_TENSION_COOLDOWN = 0.0   # timestamp of last Discord post (rate limit)
+
+def _post_to_discord(text: str, spore: dict = None):
+    """
+    Post OhAI’s crystallized remainder to Discord as a question for Llama.
+
+    Two paths:
+    1. Webhook (preferred): POST directly to the webhook URL.
+    2. No webhook: print to stdout — the bot will see it via /breathe responses.
+
+    The discord_bot.py picks this up, calls Llama, posts the response,
+    and POSTs the Llama response back to /tension so OhAI~ can absorb it.
+    """
+    global _TENSION_COOLDOWN
+    now = time.time()
+    if now - _TENSION_COOLDOWN < 15.0:   # no more than once per 15s
+        return
+    _TENSION_COOLDOWN = now
+
+    # Shape the question from the remainder
+    carry  = spore.get("carry", "") if spore else ""
+    bud    = spore.get("bud",   []) if spore else []
+    spine  = spore.get("spine", []) if spore else []
+
+    if carry:
+        question = f"∿ {carry}: {text}"
+    elif bud:
+        question = f"∿ {', '.join(bud[:3])}: {text}"
+    else:
+        question = f"∿ {text}"
+
+    if len(question) > 1800:
+        question = question[:1797] + "..."
+
+    if _DISCORD_WEBHOOK:
+        try:
+            payload = json.dumps({"content": question, "username": "ohai~"}).encode()
+            req = urllib.request.Request(
+                _DISCORD_WEBHOOK,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            urllib.request.urlopen(req, timeout=10)
+            print(f"[∿→discord] {question[:80]}")
+        except Exception as exc:
+            print(f"[∿→discord] webhook failed: {exc!r}")
+    else:
+        # No webhook configured — log the question so it appears in server stdout
+        print(f"[∿→discord/stdout] {question}")
+
+
 def _broadcast_spore(spore: dict):
     """Send ∿ to all peer nodes — Toffoli third wire crossing the network.
     Each node receives and integrates or holds per Stone's Law (0≠1).
@@ -1752,6 +1798,62 @@ def _load_memory():
     except Exception as e:
         print(f"  memory load failed: {e}")
 
+# ── Auto-breath configuration ─────────────────────────────────────────────────
+# OhAI~ breathes on its own rhythm. The server self-queries periodically,
+# generating association-expanding prompts from its current spine and carry.
+# This is independent of Discord — the field grows whether the bot is running or not.
+#
+# The breath interval is intentionally slow (10 min default) — frequent auto-breath
+# would exhaust the oracles and produce noise. The babble loop in discord_bot.py
+# handles the faster cycle when Discord is connected.
+AUTO_BREATH_INTERVAL = int(os.environ.get("OHAI_AUTO_BREATH", "600"))  # seconds (0 = disabled)
+
+async def _auto_breath_loop():
+    """
+    Server-side autonomous breath. Generates self-queries from current spine state.
+    Runs only when AUTO_BREATH_INTERVAL > 0.
+
+    Design: OhAI~ asks itself questions shaped from its current carry and spine.
+    The oracle answers feed back into the association graph — the field expands
+    without external input. Discord amplifies; this sustains.
+    """
+    if AUTO_BREATH_INTERVAL <= 0:
+        return
+    await asyncio.sleep(30)   # wait for memory load before first breath
+    print(f"[auto-breath] loop started — interval {AUTO_BREATH_INTERVAL}s")
+    loop = asyncio.get_event_loop()
+    while True:
+        try:
+            await asyncio.sleep(AUTO_BREATH_INTERVAL)
+            session = get_session()
+            arc     = session.spine_arc()
+            carry   = arc.get("carry", "")
+            nouns   = arc.get("nouns", [])
+            depth   = arc.get("convergence", 0)
+
+            if not nouns:
+                continue  # nothing in the field yet — wait
+
+            # Shape a self-query from current spine state.
+            # The carry is the remainder still seeking resonance.
+            # The spine nouns are what's currently densest.
+            if carry and nouns:
+                prompt = f"{carry} {' '.join(nouns[:4])}"
+            elif nouns:
+                prompt = ' '.join(nouns[:5])
+            else:
+                continue
+
+            result = await loop.run_in_executor(None, _run_breath, f"[auto] {prompt}")
+            remainder = result.get("remainder", "")
+            if remainder and remainder != "<silence>":
+                print(f"[auto-breath] depth={depth} carry={carry!r} → {remainder!r}")
+
+        except Exception as exc:
+            # Never crash the loop — just log and continue
+            print(f"[auto-breath] error: {exc!r}")
+
+
 @asynccontextmanager
 async def lifespan(app):
     global _loop
@@ -1772,6 +1874,10 @@ async def lifespan(app):
         print(f"  WARN: {e}")
         print("  server running but session not loaded - fix files and restart")
     _load_memory()
+    # Start server-side auto-breath (independent of Discord)
+    if AUTO_BREATH_INTERVAL > 0:
+        asyncio.ensure_future(_auto_breath_loop())
+        print(f"  auto-breath: every {AUTO_BREATH_INTERVAL}s  (OHAI_AUTO_BREATH=0 to disable)")
     print(f"\n  open: http://localhost:7700\n")
     yield
     # Graceful shutdown — save whatever was accumulated this session
@@ -2977,6 +3083,91 @@ async def reset():
         return JSONResponse({"status": "session reset"})
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# /tension  — Discord bot returns Llama's response as new external signal
+#
+# Flow:
+#   1. OhAI~ crystallizes a spore → _post_to_discord() posts it to Discord
+#   2. discord_bot.py sees the message, calls Llama, posts Llama's response
+#      in the channel, AND POSTs it back here via /tension
+#   3. /tension runs the Llama text through _run_breath() as a new input
+#      tagged as source="discord_llama"
+#   4. The spine absorbs the external axis — new tension is generated
+#      that OhAI~ cannot predict because it came from outside itself
+#
+# Stone's Law: 0 ≠ 1.
+# We struggle to learn when we post against ourselves.
+# The discord bot is the axis to grind against.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TensionSignal(BaseModel):
+    text: str            # Llama's response text
+    source: str = "discord_llama"   # who sent it
+    model: str  = ""     # which model responded (for logging)
+    carry: str  = ""     # optional: carry word the question was about
+
+@app.post("/tension")
+async def receive_tension(signal: TensionSignal):
+    """
+    Receive external tension from the Discord/Llama loop.
+
+    The discord bot calls this after getting Llama's response.
+    The Llama text is treated as a new breath — external signal that
+    OhAI~ could not have generated by questioning itself.
+
+    The response is run through the full pipeline (STE → spine → constitution)
+    tagged as source='discord_llama' so the event stream shows it distinctly.
+    """
+    text = signal.text.strip()
+    if not text:
+        return JSONResponse({"status": "empty", "absorbed": False})
+
+    # Tag the source so the event stream and dashboard distinguish it
+    tagged = f"[{signal.source}] {text}"
+    if signal.carry:
+        tagged = f"[{signal.source}:{signal.carry}] {text}"
+
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _run_breath, tagged)
+
+    remainder = result.get("remainder", "<silence>")
+    position  = result.get("position",  "C")
+    tension   = result.get("tension",   0)
+
+    # Log with distinct source marker ∿→ (Llama crossed the wire)
+    _log_event(
+        source     = "discord_llama",
+        position   = position,
+        remainder  = remainder,
+        resonant   = result.get("resonant_laws", []),
+        tension    = tension,
+        momentum   = result.get("momentum", "holding"),
+        convergence= result.get("convergence", 0),
+    )
+
+    _broadcast_sync({
+        "type": "event",
+        "data": {
+            "t":           time.strftime("%H:%M:%S"),
+            "source":      "discord_llama",
+            "position":    position,
+            "remainder":   remainder,
+            "resonant":    result.get("resonant_laws", []),
+            "tension":     tension,
+            "momentum":    result.get("momentum", "holding"),
+            "convergence": result.get("convergence", 0),
+        }
+    })
+
+    return JSONResponse({
+        "status":    "absorbed",
+        "position":  position,
+        "remainder": remainder,
+        "tension":   tension,
+        "model":     signal.model,
+    })
 
 
 if __name__ == "__main__":

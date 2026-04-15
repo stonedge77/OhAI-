@@ -1,11 +1,25 @@
 {
   "port": 7700,
+
   "ollama_model": "ohai-oracle",
-  "ollama_url": "http://localhost:11434/api/generate",
+  "ollama_url":   "http://localhost:11434/api/generate",
+
   "nodes": [
     {
-      "url": "http://192.168.1.x:11434",
-      "model": "llama3.1"
+      "name":  "node2",
+      "url":   "http://192.168.1.x:7700",
+      "model": "llama3.2:3b"
     }
-  ]
+  ],
+
+  "_comment_discord": "Discord tension loop — OhAI~ asks, the bot answers via Llama.",
+  "_comment_discord2": "OhAI~ posts crystallized remainders to the webhook as questions.",
+  "_comment_discord3": "The bot intercepts ∿ posts, calls Llama, and routes the response back via /tension.",
+  "_comment_discord4": "Stone's Law: 0 ≠ 1 — we struggle to learn when we post against ourselves.",
+
+  "discord_webhook":    "",
+  "discord_channel_id": 0,
+
+  "_comment_llama": "The discord bot reads LLAMA_URL and LLAMA_MODEL from env vars.",
+  "_comment_llama2": "Set: export LLAMA_URL=http://localhost:11434/api/generate LLAMA_MODEL=llama3.2:3b"
 }
