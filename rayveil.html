@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<meta charset="UTF-8">
+<title>Rayveil – Subtractive Shadow Skill</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#050810">
+<style>
+  html,body{margin:0;height:100%;background:#050810;overflow:hidden;touch-action:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+  #c{position:fixed;inset:0;display:block;cursor:crosshair}
+  #ui{position:fixed;top:14px;left:14px;padding:14px 16px 12px;border-radius:16px;background:rgba(8,14,28,.55);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);border:1px solid rgba(120,200,255,.18);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);color:#cfeaff;user-select:none;min-width:210px}
+  #ui .title{font-weight:650;letter-spacing:.3px;font-size:15px;display:flex;align-items:baseline;gap:8px}
+  #ui .title span{font-size:11px;opacity:.7;font-weight:500;padding:2px 6px;border:1px solid rgba(120,200,255,.25);border-radius:999px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 0}
+  .row label{font-size:12px;opacity:.9;display:flex;align-items:center;gap:6px}
+  .row label b{font-variant-numeric:tabular-nums;color:#9fe1ff}
+  input[type=range]{-webkit-appearance:none;width:120px;height:22px;background:transparent}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;background:linear-gradient(90deg,rgba(90,180,255,.2),rgba(90,220,255,.5));border-radius:99px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-5px;width:14px;height:14px;border-radius:50%;background:#9fe1ff;box-shadow:0 0 6px rgba(120,220,255,.8),0 0 0 3px rgba(120,220,255,.15);border:1px solid rgba(0,0,0,.3)}
+  input[type=range]::-moz-range-track{height:4px;background:linear-gradient(90deg,rgba(90,180,255,.2),rgba(90,220,255,.5));border-radius:99px}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#9fe1ff;box-shadow:0 0 6px rgba(120,220,255,.8),0 0 0 3px rgba(120,220,255,.15);border:1px solid rgba(0,0,0,.3)}
+  .hint{margin-top:10px;font-size:11px;opacity:.65;line-height:1.3}
+  .fps{margin-top:6px;font-size:11px;opacity:.55}
+  .fps span{font-variant-numeric:tabular-nums}
+  @media (max-width:520px){#ui{top:10px;left:10px;right:10px;min-width:auto}input[type=range]{width:52vw;max-width:180px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="title">Rayveil <span>CC0</span></div>
+  <div class="row"><label>Rays <b id="rv">200</b></label><input id="rays" type="range" min="120" max="300" step="10" value="200"></div>
+  <div class="row"><label>Layers <b id="lv">5</b></label><input id="layers" type="range" min="1" max="5" step="1" value="5"></div>
+  <div class="hint">drag to move • subtractive shadow</div>
+  <div class="fps">fps <span id="fps">–</span></div>
+</div>
+<script>
+'use strict';
+
+// Rayveil – subtractive SDF ray shells
+// CC0 – no rights reserved
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+
+let W=0, H=0, CX=0, CY=0, dpr=1;
+const TAU = Math.PI*2;
+const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ~2.39996
+
+const core = { x:0, y:0, tx:0, ty:0 };
+let rayCount = 200;
+let layerCount = 5;
+let rayOffset = 0;
+
+const cutters = [];
+for(let i=0;i<5;i++){
+  cutters.push({
+    a: i * TAU/5 + Math.random(),
+    speed: (0.006 + Math.random()*0.004) * (i%2?1:-1),
+    baseR: 48 + Math.random()*38,
+    phase: Math.random()*10,
+    orbitF: 0.52 + Math.random()*0.18,
+    cx:0, cy:0, r:50, orbit:0
+  });
+}
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio||1, 1.75);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  CX = W/2; CY = H/2;
+  canvas.width = Math.floor(W*dpr);
+  canvas.height = Math.floor(H*dpr);
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(core.x===0){ core.x = core.tx = CX; core.y = core.ty = CY; }
+}
+window.addEventListener('resize', resize);
+resize();
+
+// UI
+const rv = document.getElementById('rv');
+const lv = document.getElementById('lv');
+document.getElementById('rays').addEventListener('input', e=>{
+  rayCount = +e.target.value; rv.textContent = rayCount;
+});
+document.getElementById('layers').addEventListener('input', e=>{
+  layerCount = +e.target.value; lv.textContent = layerCount;
+});
+
+// pointer
+function setTarget(x,y){ core.tx = x; core.ty = y; }
+window.addEventListener('pointerdown', e=>{ setTarget(e.clientX, e.clientY); canvas.setPointerCapture?.(e.pointerId); });
+window.addEventListener('pointermove', e=>{ if(e.buttons || e.pointerType!=='mouse') setTarget(e.clientX, e.clientY); });
+window.addEventListener('pointerenter', e=> setTarget(e.clientX, e.clientY));
+
+// 2D SDFs
+function sdCircle(px,py,cx,cy,r){ return Math.hypot(px-cx, py-cy) - r; }
+function sdfWorld(px,py, baseR){
+  // large central circle MINUS cutters
+  let d = sdCircle(px,py, core.x, core.y, baseR);
+  for(let i=0;i<cutters.length;i++){
+    const c = cutters[i];
+    const d2 = sdCircle(px,py, c.cx, c.cy, c.r);
+    d = Math.max(d, -d2); // subtract
+  }
+  return d;
+}
+
+let lastFpsT = performance.now(), frames=0, fps=60;
+
+function frame(now){
+  // ease core
+  core.x += (core.tx - core.x) * 0.12;
+  core.y += (core.ty - core.y) * 0.12;
+
+  // breathing base radius
+  const baseR = Math.min(W,H) * 0.265 + Math.sin(now*0.0012)*10;
+
+  // update cutters – slow organic orbit
+  for(const c of cutters){
+    c.a += c.speed * 0.6;
+    const wob = Math.sin(now*0.00023 + c.phase)*0.25;
+    c.orbit = baseR * c.orbitF * (1 + wob*0.12);
+    c.cx = core.x + Math.cos(c.a + Math.sin(now*0.00019 + c.phase)*0.4) * c.orbit;
+    c.cy = core.y + Math.sin(c.a + Math.cos(now*0.00021 + c.phase)*0.4) * c.orbit;
+    c.r = c.baseR + Math.sin(now*0.0011 + c.phase)*9;
+  }
+
+  // golden angle to avoid repetition
+  rayOffset = (rayOffset + GOLDEN * 0.22) % TAU;
+
+  // --- Raymarch ---
+  const distances = new Float32Array(rayCount);
+  const angles = new Float32Array(rayCount);
+  const maxSteps = 40;
+  const maxDist = Math.max(W,H)*0.75;
+
+  for(let i=0;i<rayCount;i++){
+    const ang = (i / rayCount) * TAU + rayOffset;
+    angles[i] = ang;
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    let t = 0;
+    let vel = 0.015;
+    for(let s=0;s<maxSteps;s++){
+      const px = core.x + dx*t;
+      const py = core.y + dy*t;
+      const d = sdfWorld(px,py, baseR);
+      if(Math.abs(d) < 0.001) break;
+      vel = vel + 0.15 * d;
+      if(vel < 0.015) vel = 0.015; else if(vel > 0.12) vel = 0.12;
+      t += (d > 0.015 ? d : 0.015) + vel;
+      if(t > maxDist){ t = maxDist; break; }
+    }
+    distances[i] = t;
+  }
+
+  // 3-tap blur, twice for softness
+  const tmp = new Float32Array(rayCount);
+  for(let i=0;i<rayCount;i++){
+    const p = distances[(i-1+rayCount)%rayCount];
+    const c = distances[i];
+    const n = distances[(i+1)%rayCount];
+    tmp[i] = (p + c*1.3 + n) / 3.3;
+  }
+  for(let i=0;i<rayCount;i++){
+    const p = tmp[(i-1+rayCount)%rayCount];
+    const c = tmp[i];
+    const n = tmp[(i+1)%rayCount];
+    distances[i] = (p + c + n) / 3;
+  }
+
+  // --- Draw ---
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#050810';
+  ctx.fillRect(0,0,W,H);
+
+  // soft vignette
+  const vg = ctx.createRadialGradient(CX,CY, Math.min(W,H)*0.15, CX,CY, Math.max(W,H)*0.7);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,6,18,0.65)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,W,H);
+
+  const scales = [1.0, 0.87, 0.74, 0.61, 0.48];
+  const alphas = [0.6, 0.45, 0.3, 0.2, 0.12];
+
+  ctx.globalCompositeOperation = 'lighter';
+
+  for(let l=0; l<layerCount; l++){
+    const scale = scales[l] * (1 + Math.sin(now*0.0007 + l*1.3)*0.018);
+    const alpha = alphas[l];
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowBlur = 36 + l*6;
+    ctx.shadowColor = 'rgba(90,220,255,0.85)';
+
+    // radial gradient fill
+    const maxR = baseR * 1.5 * scale;
+    const grad = ctx.createRadialGradient(core.x, core.y, baseR*0.05, core.x, core.y, maxR);
+    const hue = 192 + Math.sin(now*0.00025 + l)*10;
+    grad.addColorStop(0, `hsla(${hue},100%,78%,1)`);
+    grad.addColorStop(0.25, `hsla(${hue+8},100%,66%,0.65)`);
+    grad.addColorStop(0.55, `hsla(${hue+16},90%,58%,0.22)`);
+    grad.addColorStop(1, `hsla(${hue+24},70%,45%,0)`);
+    ctx.fillStyle = grad;
+
+    // build smooth polygon
+    const xs = new Float32Array(rayCount);
+    const ys = new Float32Array(rayCount);
+    for(let i=0;i<rayCount;i++){
+      const r = distances[i] * scale * (1 + Math.sin(now*0.001 + i*0.41)*0.012);
+      xs[i] = core.x + Math.cos(angles[i]) * r;
+      ys[i] = core.y + Math.sin(angles[i]) * r;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(xs[0], ys[0]);
+    for(let i=0;i<rayCount;i++){
+      const i0 = (i-1+rayCount)%rayCount;
+      const i1 = i;
+      const i2 = (i+1)%rayCount;
+      const i3 = (i+2)%rayCount;
+      const x1 = xs[i1], y1 = ys[i1];
+      const x2 = xs[i2], y2 = ys[i2];
+      const cp1x = x1 + (x2 - xs[i0]) * 0.16;
+      const cp1y = y1 + (y2 - ys[i0]) * 0.16;
+      const cp2x = x2 - (xs[i3] - x1) * 0.16;
+      const cp2y = y2 - (ys[i3] - y1) * 0.16;
+      ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,x2,y2);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // core – healing pulse
+  ctx.globalCompositeOperation = 'screen';
+  const pulse = 5.5 + Math.sin(now*0.0031)*1.3 + Math.sin(now*0.0017)*0.7;
+  const coreGlow = ctx.createRadialGradient(core.x,core.y,0, core.x,core.y, pulse*7);
+  coreGlow.addColorStop(0,'rgba(190,245,255,0.95)');
+  coreGlow.addColorStop(0.35,'rgba(90,200,255,0.38)');
+  coreGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = coreGlow;
+  ctx.beginPath();
+  ctx.arc(core.x,core.y,pulse*7,0,TAU);
+  ctx.fill();
+
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = 'rgba(120,230,255,0.9)';
+  ctx.fillStyle = 'rgba(210,250,255,0.98)';
+  ctx.beginPath();
+  ctx.arc(core.x,core.y,pulse,0,TAU);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // fps
+  frames++;
+  if(now - lastFpsT > 600){
+    fps = Math.round(frames*1000/(now-lastFpsT));
+    document.getElementById('fps').textContent = fps;
+    frames = 0; lastFpsT = now;
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// prevent scroll
+document.addEventListener('touchmove', e=>e.preventDefault(), {passive:false});
+</script>
+</body>
+</html>
