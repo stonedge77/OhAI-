@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muscle OS Explorer — OhAI~</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #18181f;
+  --surface3: #22222a;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8e6df;
+  --text2: #8a887f;
+  --text3: #555550;
+  --accent-blue: #5b8fff;
+  --accent-amber: #f0a93a;
+  --accent-purple: #8b6fcb;
+  --accent-teal: #4aead0;
+  --accent-green: #5dffb8;
+  --accent-red: #ff5555;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+header {
+  grid-column: 1 / -1;
+  padding: 18px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+header h1 {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+header .subtitle {
+  font-size: 12px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+
+.version-badge {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--accent-teal);
+  border: 1px solid rgba(74,234,208,0.2);
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+/* Canvas area */
+.canvas-wrap {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  background: radial-gradient(ellipse at center, rgba(91,143,255,0.03) 0%, transparent 70%);
+}
+
+#muscle-canvas {
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.4), inset 0 0 0 1px var(--border);
+}
+
+/* Control panel */
+.sidebar {
+  grid-column: 2;
+  grid-row: 2;
+  border-left: 1px solid var(--border);
+  padding: 20px 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ctrl-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.ctrl-group-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Breath cycle visual */
+.breath-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.breath-node {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.breath-node:hover {
+  border-color: var(--border2);
+}
+
+.breath-node.active {
+  background: rgba(74,234,208,0.15);
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+  box-shadow: 0 0 12px rgba(74,234,208,0.2);
+}
+
+.breath-node.complete {
+  background: rgba(93,255,184,0.12);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.breath-arrow {
+  color: var(--text3);
+  font-size: 12px;
+}
+
+/* Register display */
+.reg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.reg-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.reg-symbol {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.reg-symbol.emerge { color: var(--accent-blue); }
+.reg-symbol.remainder { color: var(--accent-amber); }
+.reg-symbol.shadow { color: var(--accent-purple); }
+
+.reg-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.reg-label {
+  font-size: 9px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* Muscle layers */
+.layer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.layer-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.layer-btn:hover {
+  border-color: var(--border2);
+}
+
+.layer-btn.active {
+  border-color: var(--accent-blue);
+  background: rgba(91,143,255,0.1);
+}
+
+.layer-btn .layer-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.layer-btn .layer-phase {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+}
+
+/* Phase sliders */
+.phase-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.phase-ctrl label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  min-width: 24px;
+}
+
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  transition: transform 0.1s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type=range].phase-l1::-webkit-slider-thumb { background: var(--accent-blue); }
+input[type=range].phase-l2::-webkit-slider-thumb { background: var(--accent-teal); }
+input[type=range].phase-l3::-webkit-slider-thumb { background: var(--accent-amber); }
+input[type=range].phase-l4::-webkit-slider-thumb { background: var(--accent-purple); }
+
+.phase-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Gesture output */
+.gesture-display {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.gesture-box {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.gesture-box.active {
+  border-color: var(--accent-green);
+  background: rgba(93,255,184,0.1);
+}
+
+.gesture-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.gesture-value {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Input field */
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-row input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input-row input:focus {
+  border-color: rgba(255,255,255,0.25);
+}
+
+.input-row input::placeholder {
+  color: var(--text3);
+}
+
+.input-row button {
+  background: var(--accent-blue);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--bg);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.input-row button:hover {
+  background: #6a9fff;
+}
+
+/* Info text */
+.info-text {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+  font-family: var(--sans);
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.info-text code {
+  font-family: var(--mono);
+  color: var(--accent-amber);
+  background: var(--surface3);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* Lock indicator */
+.lock-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.lock-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lock-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.lock-value.locked {
+  color: var(--accent-green);
+}
+
+.lock-value.open {
+  color: var(--accent-amber);
+}
+
+@media (max-width: 800px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .canvas-wrap { grid-column: 1; grid-row: 2; }
+  .sidebar { grid-column: 1; grid-row: 3; border-left: none; border-top: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Muscle OS Explorer</h1>
+  <span class="subtitle">onboard AI controller</span>
+  <span class="version-badge">v0.1 demo</span>
+</header>
+
+<div class="canvas-wrap">
+  <canvas id="muscle-canvas" width="480" height="480"></canvas>
+</div>
+
+<aside class="sidebar">
+
+  <!-- Input -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">input word</div>
+    <div class="input-row">
+      <input type="text" id="word-input" placeholder="enter any word..." maxlength="20">
+      <button id="process-btn">ste()</button>
+    </div>
+  </div>
+
+  <!-- Breath Cycle -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">breath cycle — OS controller</div>
+    <div class="breath-visual">
+      <div class="breath-node" data-phase="inhale">inhale</div>
+      <span class="breath-arrow">→</span>
+      <div class="breath-node" data-phase="hold">hold</div>
+      <span class="breath-arrow">→</span>
+      <div class="breath-node" data-phase="exhale">exhale</div>
+      <span class="breath-arrow">→</span>
+      <div class="breath-node" data-phase="flip8">flip8</div>
+    </div>
+    <div class="info-text">
+      The breath cycle runs the operator cascade. <code>∇=0</code> means lock — clean succession. Open ∇ means drift.
+    </div>
+  </div>
+
+  <!-- Registers -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">registers</div>
+    <div class="reg-grid">
+      <div class="reg-box">
+        <div class="reg-symbol emerge">C</div>
+        <div class="reg-value" id="reg-c">0</div>
+        <div class="reg-label">emergence</div>
+      </div>
+      <div class="reg-box">
+        <div class="reg-symbol remainder">∇</div>
+        <div class="reg-value" id="reg-d">0</div>
+        <div class="reg-label">remainder</div>
+      </div>
+      <div class="reg-box">
+        <div class="reg-symbol shadow">⊘</div>
+        <div class="reg-value" id="reg-s">0</div>
+        <div class="reg-label">shadow</div>
+      </div>
+    </div>
+    <div class="lock-indicator">
+      <span class="lock-label">lock</span>
+      <span class="lock-value locked" id="lock-state">∇ ≠ 0 — open</span>
+    </div>
+  </div>
+
+  <!-- Muscle Layers -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">muscle layers — phase signals</div>
+    <div class="layer-grid">
+      <div class="layer-btn active" data-layer="l1">
+        <span class="layer-name">L1 — Slow Twitch</span>
+        <span class="layer-phase">0° phase</span>
+      </div>
+      <div class="layer-btn" data-layer="l2">
+        <span class="layer-name">L2 — Fast Twitch</span>
+        <span class="layer-phase">90° phase</span>
+      </div>
+      <div class="layer-btn" data-layer="l3">
+        <span class="layer-name">L3 — Tendon</span>
+        <span class="layer-phase">180° phase</span>
+      </div>
+      <div class="layer-btn" data-layer="l4">
+        <span class="layer-name">L4 — Fascia</span>
+        <span class="layer-phase">270° phase</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase Controls -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">phase control — gesture synthesis</div>
+    <div class="phase-ctrl">
+      <label>L1</label>
+      <input type="range" id="phase-l1" class="phase-l1" min="0" max="6.28" step="0.01" value="0">
+      <span class="phase-val" id="phase-l1-val">0.00</span>
+    </div>
+    <div class="phase-ctrl">
+      <label>L2</label>
+      <input type="range" id="phase-l2" class="phase-l2" min="0" max="6.28" step="0.01" value="1.57">
+      <span class="phase-val" id="phase-l2-val">1.57</span>
+    </div>
+    <div class="phase-ctrl">
+      <label>L3</label>
+      <input type="range" id="phase-l3" class="phase-l3" min="0" max="6.28" step="0.01" value="3.14">
+      <span class="phase-val" id="phase-l3-val">3.14</span>
+    </div>
+    <div class="phase-ctrl">
+      <label>L4</label>
+      <input type="range" id="phase-l4" class="phase-l4" min="0" max="6.28" step="0.01" value="4.71">
+      <span class="phase-val" id="phase-l4-val">4.71</span>
+    </div>
+  </div>
+
+  <!-- Gestures -->
+  <div class="ctrl-group">
+    <div class="ctrl-group-label">gesture output</div>
+    <div class="gesture-display">
+      <div class="gesture-box" id="gesture-contract">
+        <span class="gesture-name">Contract</span>
+        <span class="gesture-value" id="gest-c">0.00</span>
+      </div>
+      <div class="gesture-box" id="gesture-twist">
+        <span class="gesture-name">Twist</span>
+        <span class="gesture-value" id="gest-t">0.00</span>
+      </div>
+      <div class="gesture-box" id="gesture-force">
+        <span class="gesture-name">Force</span>
+        <span class="gesture-value" id="gest-f">0.00</span>
+      </div>
+    </div>
+    <div class="info-text">
+      Gesture = sin(φ₁) + sin(φ₂) + sin(φ₃) + sin(φ₄)<br>
+      Contract = L1+L2 | Twist = L2×L3 | Force = L1×L4
+    </div>
+  </div>
+
+</aside>
+
+<script>
+// === MUSCLE OS EXPLORER ===
+
+const canvas = document.getElementById('muscle-canvas');
+const ctx = canvas.getContext('2d');
+
+// State
+let state = {
+  word: '',
+  breathPhase: 'inhale',
+  breathStep: 0,
+  regC: 0,
+  regD: 0,
+  regS: 0,
+  lock: false,
+  activeLayer: 'l1',
+  phases: [0, 1.57, 3.14, 4.71],
+  gestures: { contract: 0, twist: 0, force: 0 }
+};
+
+// Simple hash function (word → 3 values)
+function ste(word) {
+  if (!word) return { c: 0, d: 0, s: 0 };
+  let h = 0;
+  for (let i = 0; i < word.length; i++) {
+    h = ((h << 5) - h) + word.charCodeAt(i);
+    h = h & h;
+  }
+  const c = Math.abs((h >> 16) & 0xFFFF) / 65535 * 255;
+  const d = Math.abs((h >> 8) & 0xFF) / 255 * 255;
+  const s = Math.abs(h & 0xFF) / 255 * 255;
+  return { c: Math.floor(c), d: Math.floor(d), s: Math.floor(s) };
+}
+
+// NAND operator (simplified)
+function nandOp(a, b) {
+  return ~a & 255;
+}
+
+// Breath cycle transitions
+function breathNext() {
+  const phases = ['inhale', 'hold', 'hold', 'hold', 'hold', 'hold', 'exhale', 'flip8'];
+  state.breathStep = (state.breathStep + 1) % 8;
+  state.breathPhase = phases[state.breathStep];
+  updateBreathUI();
+}
+
+// Execute operator based on breath phase
+function runOperator(op, a, b) {
+  switch (op) {
+    case 'inhale':
+      // C = a|b, ∇ = a&b, ⊘ = popcount(a^b)
+      return {
+        c: a | b,
+        d: a & b,
+        s: ((a ^ b).toString(2).match(/1/g) || []).length
+      };
+    case 'hold':
+      // C = a, ∇ = |a-b|, ⊘ = gcd(a,b)
+      return {
+        c: a,
+        d: Math.abs(a - b),
+        s: gcd(a, b || 1)
+      };
+    case 'exhale':
+      // C = |a-b|, ∇ = min(a,b), ⊘ = a+b
+      return {
+        c: Math.abs(a - b),
+        d: Math.min(a, b),
+        s: (a + b) & 0xFF
+      };
+    case 'flip8':
+      // C = ~a, ∇ = b, ⊘ = a^b (forced drop)
+      return {
+        c: (~a) & 0xFF,
+        d: b,
+        s: a ^ b
+      };
+    default:
+      return { c: a, d: b, s: 0 };
+  }
+}
+
+function gcd(a, b) {
+  while (b) { const t = b; b = a % b; a = t; }
+  return a;
+}
+
+// Update breath UI
+function updateBreathUI() {
+  document.querySelectorAll('.breath-node').forEach(node => {
+    node.classList.remove('active', 'complete');
+    if (node.dataset.phase === state.breathPhase) {
+      node.classList.add('active');
+    }
+  });
+}
+
+// Update register display
+function updateRegisters() {
+  document.getElementById('reg-c').textContent = state.regC;
+  document.getElementById('reg-d').textContent = state.regD;
+  document.getElementById('reg-s').textContent = state.regS;
+  
+  state.lock = (state.regD === 0);
+  const lockEl = document.getElementById('lock-state');
+  if (state.lock) {
+    lockEl.textContent = '∇ = 0 — LOCKED';
+    lockEl.className = 'lock-value locked';
+  } else {
+    lockEl.textContent = '∇ ≠ 0 — open';
+    lockEl.className = 'lock-value open';
+  }
+}
+
+// Calculate gestures from phases
+function calcGestures() {
+  const [p1, p2, p3, p4] = state.phases;
+  
+  // Contract: sin(p1) + sin(p2) + sin(p3) + sin(p4) / 4
+  const contract = (Math.sin(p1) + Math.sin(p2) + Math.sin(p3) + Math.sin(p4)) / 4;
+  
+  // Twist: sin(p1+p2) - sin(p3+p4)
+  const twist = (Math.sin(p1 + p2) - Math.sin(p3 + p4)) / 2;
+  
+  // Force: sin(p1*p3) + sin(p2*p4)
+  const force = (Math.sin(p1 * p3 / Math.PI) + Math.sin(p2 * p4 / Math.PI)) / 2;
+  
+  state.gestures = { contract, twist, force };
+  
+  document.getElementById('gest-c').textContent = contract.toFixed(2);
+  document.getElementById('gest-t').textContent = twist.toFixed(2);
+  document.getElementById('gest-f').textContent = force.toFixed(2);
+  
+  // Highlight active gesture
+  document.getElementById('gesture-contract').classList.toggle('active', Math.abs(contract) > 0.3);
+  document.getElementById('gesture-twist').classList.toggle('active', Math.abs(twist) > 0.3);
+  document.getElementById('gesture-force').classList.toggle('active', Math.abs(force) > 0.3);
+}
+
+// Draw muscle visualization
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  
+  // Clear
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Draw phase circles (concentric)
+  const colors = ['#5b8fff', '#4aead0', '#f0a93a', '#8b6fcb'];
+  const labels = ['L1', 'L2', 'L3', 'L4'];
+  const radii = [200, 160, 120, 80];
+  
+  for (let i = 0; i < 4; i++) {
+    const r = radii[i];
+    const phase = state.phases[i];
+    const x = cx + Math.cos(phase) * r * 0.8;
+    const y = cy + Math.sin(phase) * r * 0.8;
+    const isActive = (i === ['l1','l2','l3','l4'].indexOf(state.activeLayer));
+    
+    // Ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = isActive ? colors[i] : 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.stroke();
+    
+    // Phase point
+    ctx.beginPath();
+    ctx.arc(x, y, isActive ? 10 : 6, 0, Math.PI * 2);
+    ctx.fillStyle = isActive ? colors[i] : 'rgba(255,255,255,0.3)';
+    ctx.fill();
+    
+    // Label
+    ctx.font = '10px IBM Plex Mono';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[i], cx, cy - r - 8);
+    
+    // Connection lines to center
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = isActive ? colors[i] + '88' : 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = isActive ? 2 : 1;
+    ctx.stroke();
+  }
+  
+  // Center dot (gesture output)
+  const { contract, twist, force } = state.gestures;
+  const mag = Math.max(Math.abs(contract), Math.abs(twist), Math.abs(force));
+  const cx_out = cx + twist * 60;
+  const cy_out = cy + contract * 60;
+  
+  ctx.beginPath();
+  ctx.arc(cx_out, cy_out, 12 + Math.abs(force) * 20, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(93,255,184,${0.1 + mag * 0.2})`;
+  ctx.fill();
+  
+  ctx.beginPath();
+  ctx.arc(cx_out, cy_out, 8, 0, Math.PI * 2);
+  ctx.fillStyle = '#5dffb8';
+  ctx.fill();
+  
+  // Word label
+  if (state.word) {
+    ctx.font = '14px IBM Plex Mono';
+    ctx.fillStyle = '#e8e6df';
+    ctx.textAlign = 'center';
+    ctx.fillText(state.word, cx, h - 40);
+    
+    // Hash values
+    ctx.font = '10px IBM Plex Mono';
+    ctx.fillStyle = '#555550';
+    ctx.fillText(`C:${state.regC} ∇:${state.regD} ���:${state.regS}`, cx, h - 24);
+  }
+}
+
+// Event handlers
+document.getElementById('process-btn').addEventListener('click', () => {
+  const word = document.getElementById('word-input').value.trim();
+  if (!word) return;
+  
+  state.word = word;
+  const hash = ste(word);
+  
+  // Process through breath cycle
+  let a = hash.c;
+  let b = hash.d;
+  
+  for (let i = 0; i < 4; i++) {
+    const ops = ['inhale', 'hold', 'exhale', 'flip8'];
+    state.breathPhase = ops[i % 4];
+    const result = runOperator(state.breathPhase, a, b);
+    a = result.c;
+    b = result.d;
+    state.breathStep = i;
+    updateBreathUI();
+  }
+  
+  state.regC = a;
+  state.regD = b;
+  state.regS = hash.c ^ hash.d; // simplified shadow
+  
+  updateRegisters();
+  calcGestures();
+  draw();
+});
+
+document.getElementById('word-input').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('process-btn').click();
+  }
+});
+
+// Layer buttons
+document.querySelectorAll('.layer-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.activeLayer = btn.dataset.layer;
+    
+    // Set phase to layer's default
+    const layerIndex = parseInt(state.activeLayer.replace('l', '')) - 1;
+    const layerDefaults = [0, 1.57, 3.14, 4.71];
+    
+    document.getElementById(`phase-l${layerIndex+1}`).value = layerDefaults[layerIndex];
+    state.phases[layerIndex] = layerDefaults[layerIndex];
+    document.getElementById(`phase-l${layerIndex+1}-val`).textContent = layerDefaults[layerIndex].toFixed(2);
+    
+    calcGestures();
+    draw();
+  });
+});
+
+// Phase sliders
+for (let i = 1; i <= 4; i++) {
+  const slider = document.getElementById(`phase-l${i}`);
+  const valEl = document.getElementById(`phase-l${i}-val`);
+  
+  slider.addEventListener('input', () => {
+    const v = parseFloat(slider.value);
+    state.phases[i-1] = v;
+    valEl.textContent = v.toFixed(2);
+    calcGestures();
+    draw();
+  });
+}
+
+// Auto-breath animation
+let animating = false;
+document.querySelectorAll('.breath-node').forEach(node => {
+  node.addEventListener('click', () => {
+    if (!animating) return;
+    breathNext();
+    const result = runOperator(state.breathPhase, state.regC || 128, state.regD || 64);
+    state.regC = result.c;
+    state.regD = result.d;
+    state.regS = result.s;
+    updateRegisters();
+    draw();
+  });
+});
+
+// Start animation loop
+function animate() {
+  animating = true;
+  
+  // Animate phases slowly
+  for (let i = 0; i < 4; i++) {
+    state.phases[i] += 0.01;
+    if (state.phases[i] > Math.PI * 2) state.phases[i] -= Math.PI * 2;
+  }
+  
+  // Update sliders
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById(`phase-l${i}`).value = state.phases[i-1];
+    document.getElementById(`phase-l${i}-val`).textContent = state.phases[i-1].toFixed(2);
+  }
+  
+  calcGestures();
+  draw();
+  requestAnimationFrame(animate);
+}
+
+// Initialize
+updateBreathUI();
+updateRegisters();
+animate();
+</script>
+
+</body>
+</html>
