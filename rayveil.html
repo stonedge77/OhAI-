@@ -222,6 +222,9 @@
   <div class="row"><label>Rays <b id="rv">200</b></label><input id="rays" type="range" min="120" max="300" step="10" value="200"></div>
   <div class="row"><label>Layers <b id="lv">5</b></label><input id="layers" type="range" min="1" max="5" step="1" value="5"></div>
   <div class="hint">drag to move • subtractive shadow</div>
+  <div id="ohai-status" style="margin-top:6px;font-size:11px;opacity:.55;display:none">
+    ⟳ OhAI~ <span id="ohai-label">connecting…</span>
+  </div>
   <div class="fps">fps <span id="fps">–</span></div>
 </div>
 <script>
@@ -285,7 +288,127 @@ window.addEventListener('pointerdown', e=>{ setTarget(e.clientX, e.clientY); can
 window.addEventListener('pointermove', e=>{ if(e.buttons || e.pointerType!=='mouse') setTarget(e.clientX, e.clientY); });
 window.addEventListener('pointerenter', e=> setTarget(e.clientX, e.clientY));
 
-// 2D SDFs
+// ── OhAI~ live field bridge ────────────────────────────────────────────────
+// Add ?ohai=http://localhost:7700 to the URL to connect to a running server.
+// The drawing spine drives the Rayveil field in real time:
+//   draw_color_spine   → primary hue of the shells
+//   draw_geo_spine     → cutter count, orbit radius, rotation speed
+//   convergence_depth  → base radius (deeper spine = larger field)
+//   phase_shadow       → breathing rate, pulsation
+//   carry word         → core drift bias
+//
+// Operations → cutter character:
+//   subtract / cut / nand  → fast orbit, large cutter (strong carving)
+//   breathe / swell        → slow drift, medium cutter (soft carve)
+//   crystallize / freeze   → very slow, wide cutter (plate-like)
+//   scatter / disperse     → fast random, small cutter
+//   boundary / wrap        → stationary, ring-like
+
+const OHAI_URL = new URLSearchParams(location.search).get('ohai') || null;
+let ohaiState = null;   // last fetched draw state
+let ohaiHue   = 192;    // primary hue — default cyan, overridden by color spine
+
+const OP_CUTTER_PROFILE = {
+  subtract:   { speedMul: 2.2,  radiusMul: 1.3,  orbitMul: 0.55 },
+  cut:        { speedMul: 2.0,  radiusMul: 1.1,  orbitMul: 0.50 },
+  sever:      { speedMul: 2.5,  radiusMul: 0.9,  orbitMul: 0.48 },
+  nand:       { speedMul: 1.8,  radiusMul: 1.4,  orbitMul: 0.60 },
+  void_expand:{ speedMul: 1.6,  radiusMul: 1.5,  orbitMul: 0.65 },
+  breathe:    { speedMul: 0.4,  radiusMul: 1.0,  orbitMul: 0.52 },
+  swell:      { speedMul: 0.3,  radiusMul: 1.2,  orbitMul: 0.58 },
+  crystallize:{ speedMul: 0.15, radiusMul: 1.6,  orbitMul: 0.72 },
+  freeze:     { speedMul: 0.12, radiusMul: 1.7,  orbitMul: 0.70 },
+  scatter:    { speedMul: 3.0,  radiusMul: 0.7,  orbitMul: 0.38 },
+  disperse:   { speedMul: 2.8,  radiusMul: 0.6,  orbitMul: 0.35 },
+  boundary:   { speedMul: 0.05, radiusMul: 1.8,  orbitMul: 0.80 },
+  wrap:       { speedMul: 0.08, radiusMul: 1.6,  orbitMul: 0.75 },
+  default:    { speedMul: 1.0,  radiusMul: 1.0,  orbitMul: 0.52 },
+};
+
+function hexToHue(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255;
+  const g = parseInt(hex.slice(3,5),16)/255;
+  const b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  if(max===min) return 0;
+  const d = max - min;
+  let h = max===r ? (g-b)/d + (g<b?6:0)
+        : max===g ? (b-r)/d + 2
+                  : (r-g)/d + 4;
+  return h * 60;
+}
+
+function applyOhAIState(ds) {
+  ohaiState = ds;
+  const ops    = (ds.operations || []).slice(0, 7);
+  const pal    = ds.palette || [];
+  const depth  = ds.draw_exchange || 0;
+
+  // Hue from dominant color in the spine
+  if(pal.length > 0 && pal[0].hex && pal[0].hex.startsWith('#')) {
+    ohaiHue = hexToHue(pal[0].hex);
+  }
+
+  // Rebuild cutters from geo-spine operations
+  const targetN = Math.max(2, Math.min(ops.length + 1, 7));
+  while(cutters.length < targetN) {
+    const i = cutters.length;
+    cutters.push({
+      a: i*TAU/targetN + Math.random(),
+      speed: (0.006 + Math.random()*0.004) * (i%2?1:-1),
+      baseR: 48 + Math.random()*38, phase: Math.random()*10,
+      orbitF: 0.52 + Math.random()*0.18, cx:0, cy:0, r:50, orbit:0
+    });
+  }
+  while(cutters.length > targetN) cutters.pop();
+
+  ops.forEach((op, i) => {
+    const key = (op.op || 'default').replace(/-/g,'_');
+    const prof = OP_CUTTER_PROFILE[key] || OP_CUTTER_PROFILE.default;
+    const c = cutters[i];
+    const sign = (i%2 ? 1 : -1);
+    // Blend toward new values rather than snapping — smooth transitions
+    const cnt  = Math.max(op.count || 1, 1);
+    c.speed  += ((0.006 * prof.speedMul * sign) - c.speed) * 0.05;
+    c.baseR  += ((30 + cnt * 7) * prof.radiusMul - c.baseR) * 0.04;
+    c.orbitF += (prof.orbitMul - c.orbitF) * 0.04;
+  });
+}
+
+async function fetchOhAI() {
+  if(!OHAI_URL) return;
+  try {
+    const res = await fetch(OHAI_URL + '/draw/render', {signal: AbortSignal.timeout(4000)});
+    if(!res.ok) return;
+    applyOhAIState(await res.json());
+  } catch(e) { /* server unreachable — keep previous state */ }
+}
+
+if(OHAI_URL) {
+  document.getElementById('ohai-status').style.display = 'block';
+  const ohaiLabel = document.getElementById('ohai-label');
+  const _origApply = applyOhAIState;
+  window._applyOhAIState = function(ds) {
+    _origApply(ds);
+    const ops  = (ds.operations||[]).length;
+    const cols = (ds.palette||[]).length;
+    const ex   = ds.draw_exchange || 0;
+    ohaiLabel.textContent = `ops:${ops} colors:${cols} ex:${ex}`;
+  };
+  const _origFetch = fetchOhAI;
+  fetchOhAI = async function() {
+    if(!OHAI_URL) return;
+    try {
+      const res = await fetch(OHAI_URL+'/draw/render', {signal:AbortSignal.timeout(4000)});
+      if(!res.ok){ ohaiLabel.textContent='server error'; return; }
+      window._applyOhAIState(await res.json());
+    } catch(e) { ohaiLabel.textContent='unreachable'; }
+  };
+  fetchOhAI();
+  setInterval(fetchOhAI, 3000);
+}
+
+// ── 2D SDFs ────────────────────────────────────────────────────────────────
 function sdCircle(px,py,cx,cy,r){ return Math.hypot(px-cx, py-cy) - r; }
 function sdfWorld(px,py, baseR){
   // large central circle MINUS cutters
@@ -305,8 +428,9 @@ function frame(now){
   core.x += (core.tx - core.x) * 0.12;
   core.y += (core.ty - core.y) * 0.12;
 
-  // breathing base radius
-  const baseR = Math.min(W,H) * 0.265 + Math.sin(now*0.0012)*10;
+  // breathing base radius — grows with OhAI~ convergence depth
+  const depthScale = ohaiState ? Math.min(0.30, 0.18 + (ohaiState.draw_exchange||0) * 0.0004) : 0.265;
+  const baseR = Math.min(W,H) * depthScale + Math.sin(now*0.0012)*10;
 
   // update cutters – slow organic orbit
   for(const c of cutters){
@@ -390,7 +514,7 @@ function frame(now){
     // radial gradient fill
     const maxR = baseR * 1.5 * scale;
     const grad = ctx.createRadialGradient(core.x, core.y, baseR*0.05, core.x, core.y, maxR);
-    const hue = 192 + Math.sin(now*0.00025 + l)*10;
+    const hue = ohaiHue + Math.sin(now*0.00025 + l)*10;
     grad.addColorStop(0, `hsla(${hue},100%,78%,1)`);
     grad.addColorStop(0.25, `hsla(${hue+8},100%,66%,0.65)`);
     grad.addColorStop(0.55, `hsla(${hue+16},90%,58%,0.22)`);

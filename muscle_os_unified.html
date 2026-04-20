@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Muscle OS Explorer × Somatic Synthesizer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: 'IBM Plex Mono', monospace; }
+  input[type=range] { accent-color: #6366f1; }
+  .panel { background: #141821; border: 1px solid #2a3040; border-radius: 1rem; }
+  .chip { cursor: pointer; }
+  ::-webkit-scrollbar { width: 8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#2a3040; border-radius:4px; }
+</style>
+</head>
+<body class="min-h-screen bg-[#0a0b0e] text-[#d9e1ec] selection:bg-indigo-500/30">
+  <div class="max-w-[1400px] mx-auto p-4 lg:p-6">
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-xl lg:text-2xl font-semibold tracking-wide">MUSCLE OS EXPLORER <span class="text-[#6b7280]">×</span> SOMATIC SYNTHESIZER</h1>
+      <div class="text-xs text-[#7a8499]">dark · mono · live</div>
+    </header>
+
+    <main class="flex flex-col lg:flex-row gap-6">
+      <!-- LEFT: CANVAS + SLIDERS -->
+      <section class="flex-1 flex flex-col items-center">
+        <div class="panel p-3 lg:p-4 w-full flex justify-center">
+          <canvas id="phaseCanvas" width="520" height="520" class="w-full max-w-[520px] aspect-square rounded-xl bg-[#0f131a] border border-[#242a38] touch-none"></canvas>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 w-full max-w-[520px]">
+          <div class="panel p-3">
+            <div class="flex justify-between text-xs mb-1"><span class="text-[#9aa3b2]">L1 RING</span><span id="lbl1">0.00</span></div>
+            <input id="slider1" type="range" min="0" max="6.283185307179586" step="0.01" value="0" class="w-full">
+          </div>
+          <div class="panel p-3">
+            <div class="flex justify-between text-xs mb-1"><span class="text-[#9aa3b2]">L2 RING</span><span id="lbl2">0.00</span></div>
+            <input id="slider2" type="range" min="0" max="6.283185307179586" step="0.01" value="0" class="w-full">
+          </div>
+          <div class="panel p-3">
+            <div class="flex justify-between text-xs mb-1"><span class="text-[#9aa3b2]">L3 RING</span><span id="lbl3">0.00</span></div>
+            <input id="slider3" type="range" min="0" max="6.283185307179586" step="0.01" value="0" class="w-full">
+          </div>
+          <div class="panel p-3">
+            <div class="flex justify-between text-xs mb-1"><span class="text-[#9aa3b2]">L4 RING</span><span id="lbl4">0.00</span></div>
+            <input id="slider4" type="range" min="0" max="6.283185307179586" step="0.01" value="0" class="w-full">
+          </div>
+        <p class="text-[11px] text-[#6b7280] mt-2">Drag points on rings to set phase • Center dot = twist (x) / contract (y) • Halo = |force|</p>
+      </section>
+
+      <!-- RIGHT: CONTROLS -->
+      <aside class="w-full lg:w-[390px] flex flex-col gap-4">
+        <!-- Signal Output -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Signal Output</h2>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div>Note <span id="sig-note" class="float-right text-[#cbd5e1]">—</span></div>
+            <div>Freq <span id="sig-freq" class="float-right text-[#cbd5e1]">—</span></div>
+            <div>Velocity <span id="sig-vel" class="float-right text-[#cbd5e1]">—</span></div>
+            <div>Breath <span id="sig-breath" class="float-right text-[#cbd5e1]">inhale</span></div>
+          </div>
+        </div>
+
+        <!-- Registers -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Registers</h2>
+          <div class="flex items-center justify-between text-lg font-medium">
+            <div>∧ C <span id="reg-C" class="ml-2 text-cyan-300">0</span></div>
+            <div>∇ D <span id="reg-D" class="ml-2 text-fuchsia-300">0</span></div>
+            <div>⊘ S <span id="reg-S" class="ml-2 text-amber-300">0</span></div>
+          </div>
+          <div id="lockInd" class="mt-2 text-[11px] text-rose-400">🔒 LOCK</div>
+        </div>
+
+        <!-- Gesture Field -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Gesture Field</h2>
+          <div class="space-y-3 text-[11px]">
+            <div>
+              <div class="flex justify-between mb-1"><span>contract</span><span id="val-contract">0.000</span></div>
+              <div class="relative h-2 bg-[#0e121a] rounded">
+                <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#2a3040]"></div>
+                <div id="meter-contract-dot" class="absolute top-1/2 w-3 h-3 -mt-[6px] -ml-[6px] rounded-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"></div>
+              </div>
+            <div>
+              <div class="flex justify-between mb-1"><span>twist</span><span id="val-twist">0.000</span></div>
+              <div class="relative h-2 bg-[#0e121a] rounded">
+                <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#2a3040]"></div>
+                <div id="meter-twist-dot" class="absolute top-1/2 w-3 h-3 -mt-[6px] -ml-[6px] rounded-full bg-fuchsia-400 shadow-[0_0_10px_#e879f9]"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between mb-1"><span>force</span><span id="val-force">0.000</span></div>
+              <div class="relative h-2 bg-[#0e121a] rounded">
+                <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#2a3040]"></div>
+                <div id="meter-force-dot" class="absolute top-1/2 w-3 h-3 -mt-[6px] -ml-[6px] rounded-full bg-amber-400 shadow-[0_0_10px_#fbbf24]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breath Phase -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Breath Phase</h2>
+          <div class="grid grid-cols-4 gap-2">
+            <button data-phase="inhale" class="phase-btn bg-indigo-600/20 border border-indigo-500/40 rounded-lg py-1.5 text-xs hover:bg-indigo-600/30">inhale</button>
+            <button data-phase="hold" class="phase-btn bg-[#1a1f2b] border border-[#2a3040] rounded-lg py-1.5 text-xs hover:bg-[#202636]">hold</button>
+            <button data-phase="exhale" class="phase-btn bg-[#1a1f2b] border border-[#2a3040] rounded-lg py-1.5 text-xs hover:bg-[#202636]">exhale</button>
+            <button data-phase="flip8" class="phase-btn bg-[#1a1f2b] border border-[#2a3040] rounded-lg py-1.5 text-xs hover:bg-[#202636]">flip8</button>
+          </div>
+        </div>
+
+        <!-- Voice / Scale / Toggles -->
+        <div class="panel p-4 space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#8a94a8]">voice</label>
+              <select id="voiceSel" class="w-full mt-1 bg-[#0e121a] border border-[#2a3040] rounded-lg px-2 py-1.5 text-sm">
+                <option>sine</option><option>triangle</option><option>sawtooth</option><option>square</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] text-[#8a94a8]">scale</label>
+              <select id="scaleSel" class="w-full mt-1 bg-[#0e121a] border border-[#2a3040] rounded-lg px-2 py-1.5 text-sm">
+                <option value="pentatonic">pentatonic</option>
+                <option value="minor">minor</option>
+                <option value="whole">whole</option>
+                <option value="chromatic">chromatic</option>
+                <option value="overtone">overtone</option>
+              </select>
+            </div>
+          <div class="flex items-center justify-between pt-2 border-t border-[#202636] text-xs">
+            <label class="flex items-center gap-2 cursor-pointer"><input id="loopToggle" type="checkbox" class="accent-indigo-500"> Loop</label>
+            <label class="flex items-center gap-2 cursor-pointer"><input id="driftToggle" type="checkbox" class="accent-indigo-500"> Drift</label>
+            <label class="flex items-center gap-2 cursor-pointer"><input id="midiOutToggle" type="checkbox" class="accent-indigo-500"> WebMIDI out</label>
+          </div>
+        </div>
+
+        <!-- Word Input -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Word</h2>
+          <div class="flex gap-2">
+            <input id="wordInput" type="text" placeholder="type word…" class="flex-1 bg-[#0e121a] border border-[#2a3040] rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+            <button id="playBtn" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium">▶</button>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3" id="chips">
+            <span class="chip px-2 py-1 text-[11px] rounded-full bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50">loom</span>
+            <span class="chip px-2 py-1 text-[11px] rounded-full bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50">weave</span>
+            <span class="chip px-2 py-1 text-[11px] rounded-full bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50">pulse</span>
+            <span class="chip px-2 py-1 text-[11px] rounded-full bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50">breath</span>
+            <span class="chip px-2 py-1 text-[11px] rounded-full bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50">phase</span>
+          </div>
+        </div>
+
+        <!-- Pair Compare -->
+        <div class="panel p-4">
+          <h2 class="text-xs uppercase tracking-widest text-[#8a94a8] mb-3">Pair Compare ⊗</h2>
+          <div class="flex gap-2 mb-2">
+            <input id="pairA" type="text" placeholder="A" class="flex-1 bg-[#0e121a] border border-[#2a3040] rounded-lg px-2 py-1.5 text-sm">
+            <input id="pairB" type="text" placeholder="B" class="flex-1 bg-[#0e121a] border border-[#2a3040] rounded-lg px-2 py-1.5 text-sm">
+            <button id="pairBtn" class="px-3 py-1.5 rounded-lg bg-[#1b2130] border border-[#2a3040] hover:border-fuchsia-500/50 text-sm">⊗</button>
+          </div>
+          <div class="h-2 bg-[#0e121a] rounded overflow-hidden border border-[#202636]">
+            <div id="dissBar" class="h-full w-0 bg-gradient-to-r from-emerald-400 to-rose-500 transition-all"></div>
+          </div>
+          <div class="text-[11px] text-[#7a8499] mt-1">dissonance: <span id="dissVal">0%</span></div>
+        </div>
+
+        <!-- Record / Export -->
+        <div class="panel p-4 flex items-center justify-between">
+          <button id="recBtn" class="px-4 py-2 rounded-lg bg-rose-600/20 border border-rose-500/40 hover:bg-rose-600/30 text-sm">● Record</button>
+          <button id="exportBtn" class="px-4 py-2 rounded-lg bg-[#1b2130] border border-[#2a3040] hover:border-indigo-500/50 text-sm">Export CSV</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const canvas = document.getElementById('phaseCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = 260, cy = 260;
+  const radii = [200,160,120,80];
+  const colors = ['#22d3ee','#a78bfa','#f472b6','#fbbf24'];
+  let sliderPhases = [0,0,0,0];
+  const basePhases = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
+  let activeLayer = 0;
+  let dragging = false;
+
+  const sliderInputs = [
+    document.getElementById('slider1'),
+    document.getElementById('slider2'),
+    document.getElementById('slider3'),
+    document.getElementById('slider4')
+  ];
+  const sliderLabels = [
+    document.getElementById('lbl1'),
+    document.getElementById('lbl2'),
+    document.getElementById('lbl3'),
+    document.getElementById('lbl4')
+  ];
+  sliderInputs.forEach((el,i)=>{
+    el.addEventListener('input', e=>{
+      sliderPhases[i] = parseFloat(e.target.value);
+      sliderLabels[i].textContent = sliderPhases[i].toFixed(2);
+    });
+  });
+
+  // STATE
+  let registers = {C:0,D:0,S:0};
+  let breathPhase = 'inhale';
+  let voice = 'sine';
+  let scaleName = 'pentatonic';
+  let loop = false;
+  let drift = false;
+  let driftOffset = 0;
+  let gesture = {contract:0, twist:0, force:0};
+  let history = [];
+
+  // DOM refs
+  const sigNote = document.getElementById('sig-note');
+  const sigFreq = document.getElementById('sig-freq');
+  const sigVel = document.getElementById('sig-vel');
+  const sigBreath = document.getElementById('sig-breath');
+  const regC = document.getElementById('reg-C');
+  const regD = document.getElementById('reg-D');
+  const regS = document.getElementById('reg-S');
+  const lockInd = document.getElementById('lockInd');
+  const valContract = document.getElementById('val-contract');
+  const valTwist = document.getElementById('val-twist');
+  const valForce = document.getElementById('val-force');
+  const meterContractDot = document.getElementById('meter-contract-dot');
+  const meterTwistDot = document.getElementById('meter-twist-dot');
+  const meterForceDot = document.getElementById('meter-force-dot');
+
+  // Phase buttons
+  document.querySelectorAll('.phase-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.phase-btn').forEach(b=>b.classList.remove('bg-indigo-600/20','border-indigo-500/40'));
+      btn.classList.add('bg-indigo-600/20','border-indigo-500/40');
+      breathPhase = btn.dataset.phase;
+      sigBreath.textContent = breathPhase;
+    });
+  });
+
+  // Controls
+  document.getElementById('voiceSel').addEventListener('change', e=> voice = e.target.value);
+  document.getElementById('scaleSel').addEventListener('change', e=> scaleName = e.target.value);
+  document.getElementById('loopToggle').addEventListener('change', e=>{ loop = e.target.checked; if(!loop) stopLoop(); });
+  document.getElementById('driftToggle').addEventListener('change', e=> drift = e.target.checked );
+  const midiToggle = document.getElementById('midiOutToggle');
+
+  // Word input
+  const wordInput = document.getElementById('wordInput');
+  const playBtn = document.getElementById('playBtn');
+  playBtn.addEventListener('click', ()=>{ if(wordInput.value.trim()) playWord(wordInput.value.trim()); });
+  wordInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ playBtn.click(); }});
+  document.getElementById('chips').addEventListener('click', e=>{
+    if(e.target.classList.contains('chip')){
+      wordInput.value = e.target.textContent;
+      playWord(wordInput.value);
+    }
+  });
+
+  // Pair compare
+  const pairA = document.getElementById('pairA');
+  const pairB = document.getElementById('pairB');
+  const pairBtn = document.getElementById('pairBtn');
+  const dissBar = document.getElementById('dissBar');
+  const dissVal = document.getElementById('dissVal');
+  pairBtn.addEventListener('click', ()=>{
+    const a = ste(pairA.value||'');
+    const b = ste(pairB.value||'');
+    const d = (Math.abs(a.C-b.C)+Math.abs(a.D-b.D)+Math.abs(a.S-b.S))/(3*255);
+    dissBar.style.width = (d*100).toFixed(1)+'%';
+    dissVal.textContent = Math.round(d*100)+'%';
+  });
+
+  // UTIL HASH
+  function popcount(x){ let c=0; x&=0xFF; while(x){ c+=x&1; x>>>=1; } return c; }
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); if(a===0&&b===0) return 0; while(b){ [a,b]=[b,a%b]; } return a; }
+  function ste(str){
+    let s = String(str);
+    let h1 = 2166136261 >>>0;
+    for(let i=0;i<s.length;i++){
+      const code = s.charCodeAt(i);
+      h1 ^= code;
+      h1 = Math.imul(h1, 16777619);
+      h1 = (h1 + (i+1)*0x9e3779b9) >>>0;
+    }
+    let h2 = 0x811c9dc5;
+    for(let i=s.length-1;i>=0;i--){
+      const code = s.charCodeAt(i);
+      h2 ^= code;
+      h2 = Math.imul(h2, 16777619);
+      h2 ^= h2>>>15;
+    }
+    let h3 = 0xdeadbeef;
+    for(let i=0;i<s.length;i++){
+      const code = s.charCodeAt(i) * (i+1);
+      h3 = Math.imul(h3 ^ code, 0x85ebca6b);
+      h3 ^= h3>>>13;
+    }
+    const C = (h1 ^ (h1>>>8)) & 0xFF;
+    const D = (h2 ^ (h2>>>8)) & 0xFF;
+    const S = (h3 ^ (h3>>>8)) & 0xFF;
+    return {C,D,S};
+  }
+  function applyBreath(a,b,phase){
+    switch(phase){
+      case 'inhale': return {C: a|b, D: a&b, S: popcount(a^b)};
+      case 'hold': return {C: a, D: Math.abs(a-b), S: gcd(a,b)};
+      case 'exhale': return {C: Math.abs(a-b), D: Math.min(a,b), S: (a+b)&0xFF};
+      case 'flip8': return {C: (~a)&0xFF, D: b, S: a^b};
+    }
+    return {C:a,D:b,S:0};
+  }
+
+  // AUDIO
+  let audioCtx, masterGain, mediaDest, mediaRecorder, recordedChunks=[];
+  let loopNodes=null, loopRunning=false;
+  let midiAccess=null, midiOut=null;
+
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.85;
+      mediaDest = audioCtx.createMediaStreamDestination();
+      masterGain.connect(audioCtx.destination);
+      masterGain.connect(mediaDest);
+      mediaRecorder = new MediaRecorder(mediaDest.stream, {mimeType: 'audio/webm;codecs=opus'});
+      mediaRecorder.ondataavailable = e=>{ if(e.data.size) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(recordedChunks, {type:'audio/webm'});
+        recordedChunks=[];
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'muscleos_capture_'+Date.now()+'.webm'; a.click();
+        URL.revokeObjectURL(url);
+      };
+    }
+    if(audioCtx.state==='suspended') audioCtx.resume();
+  }
+
+  function midiInit(){
+    if(!navigator.requestMIDIAccess) return;
+    navigator.requestMIDIAccess().then(access=>{
+      midiAccess = access;
+      const outputs = Array.from(access.outputs.values());
+      midiOut = outputs[0] || null;
+    }).catch(()=>{ midiOut=null; });
+  }
+  midiToggle.addEventListener('change', e=>{
+    if(e.target.checked){ midiInit(); } else { midiOut=null; }
+  });
+
+  function midiSendOn(note, vel){
+    if(!midiOut) return;
+    const v = Math.max(0, Math.min(127, Math.round(vel*127)));
+    midiOut.send([0x90, note, v]);
+    // CCs
+    const cc20 = Math.round((gesture.contract+1)/2*127);
+    const cc21 = Math.round((gesture.twist+1)/2*127);
+    const cc22 = Math.round((gesture.force+1)/2*127);
+    midiOut.send([0xB0,20,cc20]); midiOut.send([0xB0,21,cc21]); midiOut.send([0xB0,22,cc22]);
+    setTimeout(()=> midiOut.send([0x80, note, 0]), 400);
+  }
+
+  function getScale(name){
+    switch(name){
+      case 'pentatonic': return [0,2,4,7,9];
+      case 'minor': return [0,2,3,5,7,8,10];
+      case 'whole': return [0,2,4,6,8,10];
+      case 'chromatic': return [0,1,2,3,4,5,6,7,8,9,10,11];
+      case 'overtone': return [0,12,19,24,28,31,34,36];
+      default: return [0,2,4,7,9];
+    }
+  }
+  function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
+  function midiToName(m){
+    const names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const o = Math.floor(m/12)-1;
+    return names[m%12]+o;
+  }
+
+  function computeAudioParams(){
+    const scale = getScale(scaleName);
+    const contractNorm = (gesture.contract+1)/2;
+    const totalSteps = scale.length*2;
+    let idx = Math.floor(contractNorm * totalSteps);
+    idx = Math.max(0, Math.min(totalSteps-1, idx));
+    const oct = Math.floor(idx / scale.length);
+    const degree = scale[idx % scale.length];
+    let midi = 60 + degree + oct*12;
+    if(Math.abs(gesture.force) > 0.35) midi += Math.sign(gesture.force)*12;
+    midi = Math.max(24, Math.min(108, midi));
+    const freq = midiToFreq(midi);
+    const velocity = 0.25 + Math.abs(gesture.force)*0.55;
+    const duration = 0.35 + Math.abs(gesture.contract)*0.7;
+    const attack = 0.015 + Math.abs(gesture.twist)*0.04;
+    const cutoff = 400 + ((gesture.contract+1)/2)*4000;
+    const pan = Math.max(-1, Math.min(1, gesture.twist));
+    const detune = (registers.S - 128) * 0.3;
+    return {midi, freq, velocity, duration, attack, cutoff, pan, detune};
+  }
+
+  function triggerNote({freq, velocity, duration, attack, cutoff, pan, detune}){
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const panner = audioCtx.createStereoPanner();
+    const gain = audioCtx.createGain();
+    osc.type = voice;
+    osc.frequency.value = freq;
+    osc.detune.value = detune;
+    filter.type = 'lowpass';
+    filter.frequency.value = cutoff;
+    panner.pan.value = pan;
+    gain.gain.value = 0;
+    osc.connect(filter).connect(panner).connect(gain).connect(masterGain);
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(velocity*0.3, now+attack);
+    gain.gain.exponentialRampToValueAtTime(0.001, now+duration);
+    osc.start(now);
+    osc.stop(now+duration+0.05);
+    osc.onended = ()=>{ try{osc.disconnect();filter.disconnect();panner.disconnect();gain.disconnect();}catch{} };
+  }
+
+  function startLoop(){
+    if(loopRunning) return;
+    ensureAudio();
+    const params = computeAudioParams();
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const panner = audioCtx.createStereoPanner();
+    const gain = audioCtx.createGain();
+    osc.type = voice;
+    osc.frequency.value = params.freq;
+    osc.detune.value = params.detune;
+    filter.type='lowpass'; filter.frequency.value=params.cutoff;
+    panner.pan.value=params.pan;
+    gain.gain.value = params.velocity*0.25;
+    osc.connect(filter).connect(panner).connect(gain).connect(masterGain);
+    osc.start();
+    loopNodes = {osc, filter, panner, gain};
+    loopRunning = true;
+  }
+  function stopLoop(){
+    if(!loopRunning) return;
+    try{ loopNodes.osc.stop(); loopNodes.osc.disconnect(); loopNodes.filter.disconnect(); loopNodes.panner.disconnect(); loopNodes.gain.disconnect(); }catch{}
+    loopNodes=null; loopRunning=false;
+  }
+
+  function playWord(word){
+    ensureAudio();
+    const tmp = ste(word);
+    const newRegs = applyBreath(tmp.C, tmp.D, breathPhase);
+    registers = newRegs;
+    updateRegistersUI();
+    // compute gesture now for immediate audio
+    const eff = computeEffectivePhases();
+    updateGestureFromPhases(eff);
+    const params = computeAudioParams();
+    sigNote.textContent = midiToName(params.midi);
+    sigFreq.textContent = params.freq.toFixed(1)+' Hz';
+    sigVel.textContent = params.velocity.toFixed(2);
+    if(loop){
+      if(!loopRunning) startLoop();
+    } else {
+      triggerNote(params);
+    }
+    if(midiOut) midiSendOn(params.midi, params.velocity);
+    history.push({
+      word, C:registers.C, D:registers.D, S:registers.S,
+      contract: gesture.contract.toFixed(3),
+      twist: gesture.twist.toFixed(3),
+      force: gesture.force.toFixed(3),
+      midi: params.midi,
+      freq: params.freq.toFixed(2),
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  function updateRegistersUI(){
+    regC.textContent = registers.C;
+    regD.textContent = registers.D;
+    regS.textContent = registers.S;
+    lockInd.textContent = registers.D===0 ? '🔒 LOCK' : '—';
+    lockInd.classList.toggle('text-rose-400', registers.D===0);
+    lockInd.classList.toggle('text-[#6b7280]', registers.D!==0);
+  }
+  updateRegistersUI();
+
+  function computeEffectivePhases(){
+    const regOffset = [
+      registers.C/255*TAU,
+      registers.D/255*TAU,
+      registers.S/255*TAU,
+      ((registers.C+registers.D+registers.S)%256)/255*TAU
+    ];
+    return basePhases.map((b,i)=> b + regOffset[i] + sliderPhases[i] + driftOffset);
+  }
+  function updateGestureFromPhases(p){
+    const [p1,p2,p3,p4] = p;
+    let contract = (Math.sin(p1)+Math.sin(p2)+Math.sin(p3)+Math.sin(p4))/4;
+    let twist = (Math.sin(p1+p2) - Math.sin(p3+p4))/2;
+    let force = (Math.sin(p1*p3/Math.PI) + Math.sin(p2*p4/Math.PI))/2;
+    contract = Math.max(-1, Math.min(1, contract));
+    twist = Math.max(-1, Math.min(1, twist));
+    force = Math.max(-1, Math.min(1, force));
+    gesture = {contract, twist, force};
+    valContract.textContent = contract.toFixed(3);
+    valTwist.textContent = twist.toFixed(3);
+    valForce.textContent = force.toFixed(3);
+    meterContractDot.style.left = ((contract+1)/2*100)+'%';
+    meterTwistDot.style.left = ((twist+1)/2*100)+'%';
+    meterForceDot.style.left = ((force+1)/2*100)+'%';
+  }
+
+  // CANVAS DRAW
+  function draw(){
+    ctx.clearRect(0,0,520,520);
+    // background grid
+    ctx.save();
+    ctx.translate(cx,cy);
+    // rings
+    for(let i=0;i<4;i++){
+      ctx.beginPath();
+      ctx.arc(0,0,radii[i],0,TAU);
+      ctx.strokeStyle = i===activeLayer ? '#4f46e5' : '#252c3a';
+      ctx.lineWidth = i===activeLayer ? 3 : 1.5;
+      ctx.stroke();
+      // tick marks
+      ctx.save();
+      ctx.rotate(sliderPhases[i]);
+      ctx.strokeStyle = colors[i];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(radii[i]-10,0);
+      ctx.lineTo(radii[i]+10,0);
+      ctx.stroke();
+      // point
+      ctx.beginPath();
+      ctx.arc(radii[i],0,7,0,TAU);
+      ctx.fillStyle = colors[i];
+      ctx.shadowColor = colors[i];
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.restore();
+      // label
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '11px IBM Plex Mono';
+      ctx.fillText('L'+(i+1), radii[i]-8, -radii[i]+12);
+    }
+    // gesture field
+    const gx = gesture.twist * 70;
+    const gy = -gesture.contract * 70;
+    const halo = 10 + Math.abs(gesture.force)*22;
+    ctx.beginPath();
+    ctx.arc(gx, gy, halo, 0, TAU);
+    ctx.fillStyle = 'rgba(99,102,241,0.12)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(gx, gy, 6, 0, TAU);
+    ctx.fillStyle = '#c7d2fe';
+    ctx.shadowColor = '#818cf8';
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // cross
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-80,0); ctx.lineTo(80,0);
+    ctx.moveTo(0,-80); ctx.lineTo(0,80);
+    ctx.stroke();
+    ctx.restore();
+
+    // update phases
+    if(drift) driftOffset = (driftOffset + 0.002) % TAU;
+    const eff = computeEffectivePhases();
+    updateGestureFromPhases(eff);
+
+    // live loop update
+    if(loopRunning && loopNodes){
+      const p = computeAudioParams();
+      loopNodes.filter.frequency.setTargetAtTime(p.cutoff, audioCtx.currentTime, 0.05);
+      loopNodes.panner.pan.setTargetAtTime(p.pan, audioCtx.currentTime, 0.05);
+      loopNodes.osc.frequency.setTargetAtTime(p.freq, audioCtx.currentTime, 0.05);
+      loopNodes.osc.detune.setTargetAtTime(p.detune, audioCtx.currentTime, 0.05);
+      loopNodes.gain.gain.setTargetAtTime(p.velocity*0.25, audioCtx.currentTime, 0.08);
+    }
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  // POINTER INTERACTION
+  canvas.addEventListener('pointerdown', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left)*scaleX - cx;
+    const y = (e.clientY - rect.top)*scaleY - cy;
+    const dist = Math.hypot(x,y);
+    let best = 0, bestDiff = Infinity;
+    radii.forEach((r,i)=>{ const d=Math.abs(dist-r); if(d<bestDiff){bestDiff=d; best=i;} });
+    if(bestDiff < 18){
+      dragging = true;
+      activeLayer = best;
+      canvas.setPointerCapture(e.pointerId);
+      updatePhaseFromPoint(x,y);
+    }
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left)*scaleX - cx;
+    const y = (e.clientY - rect.top)*scaleY - cy;
+    updatePhaseFromPoint(x,y);
+  });
+  window.addEventListener('pointerup', ()=> dragging=false);
+  function updatePhaseFromPoint(x,y){
+    let ang = Math.atan2(y,x);
+    if(ang<0) ang+=TAU;
+    sliderPhases[activeLayer]=ang;
+    sliderInputs[activeLayer].value = ang;
+    sliderLabels[activeLayer].textContent = ang.toFixed(2);
+  }
+
+  // RECORD
+  const recBtn = document.getElementById('recBtn');
+  recBtn.addEventListener('click', ()=>{
+    ensureAudio();
+    if(mediaRecorder.state === 'inactive'){
+      recordedChunks=[];
+      mediaRecorder.start();
+      recBtn.textContent = '■ Stop';
+      recBtn.classList.add('bg-rose-600/40');
+    } else {
+      mediaRecorder.stop();
+      recBtn.textContent = '● Record';
+      recBtn.classList.remove('bg-rose-600/40');
+    }
+  });
+
+  // EXPORT CSV
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    if(history.length===0){ alert('No history yet'); return; }
+    const header = 'word,C,D,S,contract,twist,force,midi,freq,timestamp';
+    const rows = history.map(h=> [h.word,h.C,h.D,h.S,h.contract,h.twist,h.force,h.midi,h.freq,h.timestamp].join(','));
+    const csv = [header,...rows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'muscleos_history_'+Date.now()+'.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // INIT
+  document.addEventListener('click', ensureAudio, {once:true});
+})();
+</script>
+</body>
+</html>

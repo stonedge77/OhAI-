@@ -18,7 +18,7 @@ Includes:
 
 from __future__ import annotations
 
-import sys, os, re, time, json, base64, threading, urllib.request, urllib.parse, html
+import sys, os, re, time, json, base64, threading, urllib.request, urllib.parse, html, random
 from pathlib import Path
 from typing import Optional
 
@@ -636,6 +636,12 @@ _DRAW_COLOR_MAX = 16   # max hex entries in color spine
 _DRAW_GEO_MAX   = 24   # max geo rules
 _DRAW_CHORD_MAX = 12   # max chord entries
 
+# ── Association index hard ceiling ─────────────────────
+# Decay (floor=0, halving) handles natural pruning.
+# This cap is the safety net: evict lowest-weight entries if the index
+# balloons faster than decay can drain it (e.g. very active sessions).
+_ASSOC_MAX = 30_000
+
 
 def _ingest_draw_chord(session: "Session", text: str) -> dict:
     """
@@ -1194,9 +1200,11 @@ class Session:
         for t in threads: t.join(timeout=12)
 
         # ── Session noise filter ─────────────────────────────
-        # Decay oracle_freq every 20 breaths so old signals don't fossilize
+        # Decay oracle_freq every 20 breaths so old signals don't fossilize.
+        # Floor is 0 — entries that halve to zero are deleted (true pruning).
         if self.exchange % 20 == 0 and self._oracle_freq:
-            self._oracle_freq = {w: max(1, c // 2) for w, c in self._oracle_freq.items()}
+            self._oracle_freq = {w: c // 2 for w, c in self._oracle_freq.items()
+                                 if c // 2 > 0}
 
         active_p1_nouns = [s for s in p1_nouns if s]
         if active_p1_nouns:
@@ -1216,12 +1224,21 @@ class Session:
         # ── Association index update ──────────────────────────
         # For each oracle's noun set: words that appear together share context.
         # This is the index — not definitions, just co-occurrence within oracle scope.
-        # Decay every 30 breaths so the index stays alive, not fossilized.
+        # Decay every 30 breaths. Floor is 0 — pairs that halve to zero are deleted.
+        # Outer key is also deleted when its inner dict empties (no ghost entries).
         if self.exchange % 30 == 0 and self._assoc:
             self._assoc = {
-                w: {co: max(1, c // 2) for co, c in pairs.items()}
+                w: pruned
                 for w, pairs in self._assoc.items()
+                if (pruned := {co: c // 2 for co, c in pairs.items() if c // 2 > 0})
             }
+        # Hard cap — evict lowest-weight entries if the index grows too large.
+        # Weight = total co-occurrence count for that word. Remainder wins.
+        if len(self._assoc) > _ASSOC_MAX:
+            ranked = sorted(self._assoc.items(),
+                            key=lambda kv: sum(kv[1].values()),
+                            reverse=True)
+            self._assoc = dict(ranked[:int(_ASSOC_MAX * 0.8)])
         for noun_set in p1_nouns:
             words = [w for w in noun_set if len(w) >= 4]
             if len(words) < 2: continue
@@ -1420,6 +1437,9 @@ class Session:
                                if w not in bud}
             # Recalculate depth after bud removal — imaginary state resolves
             self.convergence_depth = len(self.spine_nouns)
+            # Spore crystallization = constitutional resolution — tension resets
+            if hasattr(self, '_constitution'):
+                self._constitution.reset_tension()
         self._last_spore_depth = self.convergence_depth
 
         # ── CARRY CIRCUIT (remainder.py) ─────────────────────────────────────
@@ -1659,7 +1679,18 @@ def get_session() -> Session:
 
 
 _MEMORY_PATH = _HERE / "ohai_memory.json"
+_LOG_PATH    = _HERE / "ohai_log.jsonl"   # append-only crystallization log
 _HARP_STATE: dict = {}   # latest Vibe Harp gate-fire event
+
+
+def _write_log_entry(entry: dict):
+    """Append one JSON line to ohai_log.jsonl. Never raises."""
+    try:
+        line = json.dumps(entry, ensure_ascii=False) + "\n"
+        with open(_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception as exc:
+        print(f"  log write failed: {exc}")
 
 # ── Discord tension loop ──────────────────────────────────────────────────────────────
 # Stone's Law: 0 ≠ 1 — we struggle to learn by posting against ourselves.
@@ -1671,29 +1702,72 @@ _HARP_STATE: dict = {}   # latest Vibe Harp gate-fire event
 
 _DISCORD_WEBHOOK  = _cfg("discord_webhook",    "")  # set in config.json
 _DISCORD_CHANNEL  = _cfg("discord_channel_id",  0)  # channel ID for the bot to watch
-_TENSION_COOLDOWN = 0.0   # timestamp of last Discord post (rate limit)
+
+# Thread-safe rate limiting for webhook posts
+_tension_lock     = threading.Lock()
+_TENSION_COOLDOWN = 0.0   # timestamp of last Discord post
+_TENSION_RATE     = 30.0  # minimum seconds between posts (raised from 15 — avoids bursts)
+
+# Webhook health: after a 403/404, disable silently until restart.
+# One clear message is enough — 50 identical failures are noise.
+_WEBHOOK_DEAD     = False
+_WEBHOOK_DEAD_MSG = ""
+
+def _validate_webhook_url(url: str) -> str:
+    """
+    Check the webhook URL looks plausible before the server starts taking traffic.
+    Returns an error string if invalid, empty string if OK.
+    Discord webhook URLs look like:
+      https://discord.com/api/webhooks/CHANNEL_ID/TOKEN
+    Common mistakes:
+      - Still contains placeholder text (REPLACE_WITH)
+      - Uses old discordapp.com domain
+      - Missing the token segment
+    """
+    if not url:
+        return ""  # no webhook configured — silent, prints to stdout instead
+    if "REPLACE_WITH" in url or "your_token" in url.lower():
+        return "placeholder not replaced — set discord_webhook in config.json"
+    if "discordapp.com" in url:
+        return "old domain (discordapp.com) — change to discord.com"
+    parts = url.split("/")
+    if len(parts) < 7 or not parts[-1] or not parts[-2].isdigit():
+        return "malformed URL — expected https://discord.com/api/webhooks/ID/TOKEN"
+    return ""
 
 def _post_to_discord(text: str, spore: dict = None):
     """
-    Post OhAI’s crystallized remainder to Discord as a question for Llama.
+    Post OhAI's crystallized remainder to Discord as a question for Llama.
 
     Two paths:
     1. Webhook (preferred): POST directly to the webhook URL.
-    2. No webhook: print to stdout — the bot will see it via /breathe responses.
+    2. No webhook / dead webhook: print to stdout instead.
 
-    The discord_bot.py picks this up, calls Llama, posts the response,
-    and POSTs the Llama response back to /tension so OhAI~ can absorb it.
+    Rate-limited with a thread lock so multiple simultaneous spore events
+    don't all fire at once (was causing 6x duplicate failures).
+    After a 403/404 the webhook is disabled for the session — one clear
+    message, no repeated noise.
     """
-    global _TENSION_COOLDOWN
-    now = time.time()
-    if now - _TENSION_COOLDOWN < 15.0:   # no more than once per 15s
+    global _TENSION_COOLDOWN, _WEBHOOK_DEAD, _WEBHOOK_DEAD_MSG
+
+    if _WEBHOOK_DEAD:
+        # Webhook already known-bad this session — fall back to stdout silently
+        carry = spore.get("carry", "") if spore else ""
+        bud   = spore.get("bud",   []) if spore else []
+        q     = f"∿ {carry or (', '.join(bud[:3]) if bud else text)}: {text}"
+        print(f"[∿→stdout] {q[:120]}")
         return
-    _TENSION_COOLDOWN = now
+
+    # Thread-safe cooldown: acquire lock before checking/updating timestamp
+    with _tension_lock:
+        now = time.time()
+        if now - _TENSION_COOLDOWN < _TENSION_RATE:
+            return
+        _TENSION_COOLDOWN = now
 
     # Shape the question from the remainder
     carry  = spore.get("carry", "") if spore else ""
     bud    = spore.get("bud",   []) if spore else []
-    spine  = spore.get("spine", []) if spore else []
 
     if carry:
         question = f"∿ {carry}: {text}"
@@ -1705,7 +1779,38 @@ def _post_to_discord(text: str, spore: dict = None):
     if len(question) > 1800:
         question = question[:1797] + "..."
 
-    if _DISCORD_WEBHOOK:
+    # ── Always write to the persistent log with resonance context ─────────────
+    # Resonances are captured at crystallization time — this is what the
+    # carry word was connected to when the stone dropped. Survives restarts.
+    carry_word = carry or (bud[0] if bud else "")
+    try:
+        session = get_session()
+        spine   = session.spine_nouns
+        pairs   = dict(session._assoc.get(carry_word, {})) if carry_word else {}
+        top_res = sorted(pairs.items(), key=lambda x: x[1], reverse=True)[:8]
+        resonances = [
+            {"word": w, "count": c, "in_spine": w in spine}
+            for w, c in top_res
+        ]
+        prev_bud = session._spores[-2].get("bud", []) if len(session._spores) >= 2 else []
+    except Exception:
+        resonances, prev_bud, spine = [], [], set()
+
+    log_entry = {
+        "ts":         time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "carry":      carry_word,
+        "question":   question,
+        "resonances": resonances,
+        "spine":      sorted(list(spine))[:8],
+        "spore_bud":  bud[:4],
+        "prev_bud":   prev_bud[:4],
+    }
+    _write_log_entry(log_entry)
+    _broadcast_sync({"type": "log", "data": log_entry})
+    print(f"[∿] {question[:100]}")
+
+    # ── Optional Discord webhook ───────────────────────────────────────────────
+    if _DISCORD_WEBHOOK and not _WEBHOOK_DEAD:
         try:
             payload = json.dumps({"content": question, "username": "ohai~"}).encode()
             req = urllib.request.Request(
@@ -1715,12 +1820,16 @@ def _post_to_discord(text: str, spore: dict = None):
                 method="POST"
             )
             urllib.request.urlopen(req, timeout=10)
-            print(f"[∿→discord] {question[:80]}")
+            print(f"[∿→discord] sent")
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403, 404):
+                _WEBHOOK_DEAD     = True
+                _WEBHOOK_DEAD_MSG = str(exc)
+                print(f"[∿→discord] webhook disabled: {exc!r}")
+            else:
+                print(f"[∿→discord] transient error {exc.code}: {exc!r}")
         except Exception as exc:
-            print(f"[∿→discord] webhook failed: {exc!r}")
-    else:
-        # No webhook configured — log the question so it appears in server stdout
-        print(f"[∿→discord/stdout] {question}")
+            print(f"[∿→discord] error: {exc!r}")
 
 
 def _broadcast_spore(spore: dict):
@@ -1744,17 +1853,33 @@ def _broadcast_spore(spore: dict):
 def _save_memory():
     """Persist the association index, noise map, and spore archive to disk.
     Called after each spore event and on graceful shutdown.
-    The _assoc decay mechanism means this self-prunes over time —
-    associations that aren't reinforced across sessions will fade naturally.
+    Prunes at write time: entries at count < 2 won't survive next load decay,
+    so writing them is accumulation without purpose. Only the remainder is saved.
     """
     session = get_session()
     try:
+        # Write-time prune: strip count=1 pairs (they halve to 0 at next load).
+        # Also strip outer keys that would become empty after the prune.
+        save_assoc = {
+            w: pruned
+            for w, pairs in session._assoc.items()
+            if (pruned := {co: c for co, c in pairs.items() if c >= 2})
+        }
+        # Hard cap on saved assoc — keep highest-weight entries
+        if len(save_assoc) > _ASSOC_MAX:
+            ranked = sorted(save_assoc.items(),
+                            key=lambda kv: sum(kv[1].values()),
+                            reverse=True)
+            save_assoc = dict(ranked[:_ASSOC_MAX])
+
+        save_oracle_freq = {w: c for w, c in session._oracle_freq.items() if c >= 2}
+
         data = {
             "saved_at":        time.strftime("%Y-%m-%dT%H:%M:%S"),
             "exchange":        session.exchange,
-            "assoc":           session._assoc,
-            "oracle_freq":     session._oracle_freq,
-            "spores":          session._spores,
+            "assoc":           save_assoc,
+            "oracle_freq":     save_oracle_freq,
+            "spores":          session._spores[-24:],  # cap — 24 most recent crystallizations
             # Drawing spines — persist across restarts
             "draw_color_spine": session.draw_color_spine,
             "draw_geo_spine":   session.draw_geo_spine,
@@ -1770,7 +1895,10 @@ def _save_memory():
 
 def _load_memory():
     """Load persisted memory into the current session on startup.
-    Applies one round of decay to acknowledge time passed since last save.
+    Loads as-is — no load-time decay. In-session decay (every 20/30 breaths)
+    drains weak entries gradually. Write-time prune (c >= 2) keeps the file
+    clean. One brutal pass on load was too much, especially after the old
+    max(1,c//2) floor had collapsed everything to count=1.
     """
     if not _MEMORY_PATH.exists():
         return
@@ -1778,12 +1906,11 @@ def _load_memory():
     try:
         data = json.loads(_MEMORY_PATH.read_text(encoding='utf-8'))
         assoc = data.get("assoc", {})
-        # One decay pass — we don't know how long the server was down
-        assoc = {w: {co: max(1, c // 2) for co, c in pairs.items()}
-                 for w, pairs in assoc.items() if pairs}
+        # Load intact — let in-session decay do the pruning over time.
+        # Strip any empty inner dicts (defensive, shouldn't exist in clean saves).
+        assoc = {w: pairs for w, pairs in assoc.items() if pairs}
         session._assoc        = assoc
-        session._oracle_freq  = {w: max(1, c // 2)
-                                 for w, c in data.get("oracle_freq", {}).items()}
+        session._oracle_freq  = dict(data.get("oracle_freq", {}))
         session._spores       = data.get("spores", [])[-12:]
         session._last_spore_depth = 0
         # Drawing spines — restore without decay (frequency is categorical, not temporal)
@@ -1806,7 +1933,7 @@ def _load_memory():
 # The breath interval is intentionally slow (10 min default) — frequent auto-breath
 # would exhaust the oracles and produce noise. The babble loop in discord_bot.py
 # handles the faster cycle when Discord is connected.
-AUTO_BREATH_INTERVAL = int(os.environ.get("OHAI_AUTO_BREATH", "600"))  # seconds (0 = disabled)
+AUTO_BREATH_INTERVAL = int(os.environ.get("OHAI_AUTO_BREATH", "60"))  # seconds (0 = disabled)
 
 async def _auto_breath_loop():
     """
@@ -1832,15 +1959,42 @@ async def _auto_breath_loop():
             depth   = arc.get("convergence", 0)
 
             if not nouns:
-                continue  # nothing in the field yet — wait
+                # Cold start — spine is empty after restart.
+                # Seed from last spore's bud, or highest-weight assoc word.
+                # One seeded breath will populate the spine and unlock normal cycling.
+                seed = ""
+                if session._spores:
+                    bud = session._spores[-1].get("bud", [])
+                    if bud:
+                        seed = " ".join(bud[:2])
+                if not seed and session._assoc:
+                    top = max(session._assoc.items(),
+                              key=lambda kv: sum(kv[1].values()), default=None)
+                    if top:
+                        seed = top[0]
+                if not seed:
+                    continue
+                result = await loop.run_in_executor(None, _run_breath, f"[auto] {seed}")
+                remainder = result.get("remainder", "")
+                if remainder and remainder != "<silence>":
+                    print(f"[auto-breath] cold-start seed={seed!r} → {remainder!r}")
+                continue
 
             # Shape a self-query from current spine state.
-            # The carry is the remainder still seeking resonance.
-            # The spine nouns are what's currently densest.
+            # Phrased as a question so _infer_struct sees COLLAPSE > MERGING
+            # and tension can accumulate (question words trigger collapse_fallback='high').
+            _SELF_QUERIES = [
+                "what does {} require of {}?",
+                "how does {} carry {}?",
+                "why does {} remain in {}?",
+                "what is the remainder when {} meets {}?",
+                "where does {} end and {} begin?",
+            ]
             if carry and nouns:
-                prompt = f"{carry} {' '.join(nouns[:4])}"
+                _q = random.choice(_SELF_QUERIES)
+                prompt = _q.format(carry, ' '.join(nouns[:3]))
             elif nouns:
-                prompt = ' '.join(nouns[:5])
+                prompt = f"what does {' '.join(nouns[:5])} carry?"
             else:
                 continue
 
@@ -1874,6 +2028,17 @@ async def lifespan(app):
         print(f"  WARN: {e}")
         print("  server running but session not loaded - fix files and restart")
     _load_memory()
+    # Validate webhook URL at startup — catch misconfigurations before traffic
+    webhook_err = _validate_webhook_url(_DISCORD_WEBHOOK)
+    if webhook_err:
+        print(f"  ⚠  webhook: {webhook_err}")
+        print(f"     get a new URL: Discord server → Integrations → Webhooks → Copy URL")
+        print(f"     paste into config.json → discord_webhook")
+    elif _DISCORD_WEBHOOK:
+        print(f"  webhook: configured ({_DISCORD_WEBHOOK[:50]}...)")
+    else:
+        print(f"  webhook: not set — spore questions will print to stdout")
+
     # Start server-side auto-breath (independent of Discord)
     if AUTO_BREATH_INTERVAL > 0:
         asyncio.ensure_future(_auto_breath_loop())
@@ -2315,6 +2480,57 @@ async def vagus(signal: VagusSignal):
             "depth":  len(spine),
         },
     })
+
+
+@app.get("/resonance")
+async def get_resonance(word: str = "", n: int = 12):
+    """
+    Return the top N associates for a word, marked with spine membership.
+    Captures what existing stones resonate with the named word.
+    If word is empty, defaults to the current carry.
+    """
+    session = get_session()
+    word = word.lower().strip()
+    if not word:
+        word = session.carry or ""
+    pairs = dict(session._assoc.get(word, {}))
+    spine = session.spine_nouns
+    carry = session.carry or ""
+    sorted_pairs = sorted(pairs.items(), key=lambda x: x[1], reverse=True)[:n]
+    last_bud = session._spores[-1].get("bud", []) if session._spores else []
+    return JSONResponse({
+        "word":       word,
+        "in_spine":   word in spine,
+        "is_carry":   word == carry,
+        "associates": [
+            {"word": w, "count": c, "in_spine": w in spine, "is_carry": w == carry}
+            for w, c in sorted_pairs
+        ],
+        "spine":    sorted(list(spine))[:10],
+        "carry":    carry,
+        "last_bud": last_bud,
+    })
+
+
+@app.get("/log")
+async def get_log(n: int = 30):
+    """Return the last N crystallization log entries from ohai_log.jsonl."""
+    if not _LOG_PATH.exists():
+        return JSONResponse([])
+    try:
+        text  = _LOG_PATH.read_text(encoding="utf-8")
+        lines = [l for l in text.strip().split("\n") if l.strip()]
+        entries = []
+        for line in reversed(lines):
+            try:
+                entries.append(json.loads(line))
+                if len(entries) >= n:
+                    break
+            except Exception:
+                pass
+        return JSONResponse(entries)  # newest first
+    except Exception:
+        return JSONResponse([])
 
 
 @app.get("/state")
@@ -3008,6 +3224,80 @@ async def draw_render():
         "geo_count":        len(session.draw_geo_spine),
         "chord_count":      len(session.draw_chord_spine),
     })
+
+
+@app.get("/rayveil", response_class=HTMLResponse)
+async def rayveil():
+    """
+    Rayveil — subtractive SDF horizon renderer, live-wired to OhAI~.
+
+    Opens the Rayveil canvas with ?ohai=http://localhost:PORT pre-filled.
+    The drawing spine drives the field in real time:
+      - color spine    → shell hue
+      - geo-spine ops  → cutter count, orbit, speed
+      - convergence    → base radius
+    Drag to move the core. The horizon shifts with the field.
+    """
+    page = _find("rayveil.html")
+    if not page:
+        raise HTTPException(status_code=404, detail="rayveil.html not found")
+    html = page.read_text(encoding="utf-8")
+    # Inject the ohai URL so the page auto-connects on load
+    port = _cfg("port", 7700)
+    html = html.replace(
+        "new URLSearchParams(location.search).get('ohai') || null",
+        f"new URLSearchParams(location.search).get('ohai') || 'http://localhost:{port}'"
+    )
+    return HTMLResponse(content=html)
+
+
+@app.get("/draw/render/image")
+async def draw_render_image(size: int = 512):
+    """
+    Render the current drawing field as a PNG image.
+
+    Uses sdf_render.py to materialise the drawing sentence as actual pixels:
+    - palette colors  → SDF shapes (one per vector type)
+    - geo-spine ops   → SDF boolean compositions (subtract, crystallize, breathe…)
+    - 5-shell glow    → Rayveil-style depth layers
+
+    Returns: PNG image (Content-Type: image/png)
+    Teaching loop:
+      POST /draw/breathe {"text": "🔲⭕✂️🌑"}   ← feed shader emoji
+      GET  /draw/render                          ← check drawing sentence
+      GET  /draw/render/image                   ← see the SDF output
+    """
+    try:
+        session = get_session()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    try:
+        from sdf_render import render_to_base64
+    except ImportError:
+        raise HTTPException(status_code=501,
+            detail="sdf_render.py not found — ensure it is in the same directory")
+
+    # Build draw state from the same logic as /draw/render
+    palette = sorted(
+        [{"hex": h, "emoji": v["emoji"], "vector": v["vector"], "shape": v["shape"],
+          "weight": sum(v["assoc"].values()) if v["assoc"] else 0}
+         for h, v in session.draw_color_spine.items()],
+        key=lambda x: x["weight"], reverse=True
+    )
+    operations = sorted(session.draw_geo_spine,
+                        key=lambda r: r["count"], reverse=True)[:8]
+
+    draw_state = {"palette": palette, "operations": operations}
+
+    size = max(128, min(size, 1024))
+    b64  = render_to_base64(draw_state, size=size)
+    if b64 is None:
+        raise HTTPException(status_code=501,
+            detail="Pillow not installed — pip install pillow")
+
+    img_bytes = __import__("base64").b64decode(b64)
+    return Response(content=img_bytes, media_type="image/png")
 
 
 @app.get("/trio")

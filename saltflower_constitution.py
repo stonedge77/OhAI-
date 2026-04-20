@@ -123,6 +123,7 @@ class SaltflowerConstitution:
     """
 
     TENSION_THRESHOLD = 3
+    TENSION_MAX       = 12  # ceiling — beyond this tension is saturation, not signal
     G_CRYSTALLIZATION_THRESHOLD = 0.7  # fraction of high-score laws active
 
     def __init__(self, db_path: str):
@@ -197,7 +198,7 @@ class SaltflowerConstitution:
         collapse_val = self._field_val(ste_struct.get('COLLAPSE', 'absent'))
         merging_val = self._field_val(ste_struct.get('MERGING', 'absent'))
         if collapse_val > merging_val:
-            self._tension += 1
+            self._tension = min(self._tension + 1, self.TENSION_MAX)
         elif merging_val >= collapse_val and self._tension > 0:
             self._tension = max(0, self._tension - 1)
 
@@ -463,6 +464,16 @@ class SaltflowerConstitution:
             ('present' if n > 5 else 'low')
         )
 
+        # COLLAPSE floor: question-word evidence is a hard floor.
+        # Vocab index can upgrade, but cannot erase structural collapse signal.
+        _LEVELS = {'absent': 0, 'present': 1, 'high': 2}
+        _collapse_vocab = score('COLLAPSE', collapse_fallback)
+        _collapse_final = (
+            _collapse_vocab
+            if _LEVELS.get(_collapse_vocab, 0) >= _LEVELS.get(collapse_fallback, 0)
+            else collapse_fallback
+        )
+
         return {
             'LOAD':              load,
             'BOUNDARY':          score('BOUNDARY',          'stable'),
@@ -473,7 +484,7 @@ class SaltflowerConstitution:
             'CAPACITY':          score('CAPACITY',          'high'),
             'EXCITATION':        score('EXCITATION',        'present' if n > 5 else 'low'),
             'MERGING':           score('MERGING',           merging_fallback),
-            'COLLAPSE':          score('COLLAPSE',          collapse_fallback),
+            'COLLAPSE':          _collapse_final,
             'HELICAL_REALM':     score('HELICAL_REALM',     'active' if n > 3 else 'dormant'),
             'TORQUE':            score('TORQUE',            'present' if context_size > 100 else 'absent'),
             'HORIZON_INTEGRITY': score('HORIZON_INTEGRITY', 'absent'),
