@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase II Dashboard — OhAI~</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #18181f;
+  --surface3: #22222a;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8e6df;
+  --text2: #8a887f;
+  --text3: #555550;
+  --phase-i: #4aead0;
+  --phase-ii: #f0a93a;
+  --phase-iii: #ff5555;
+  --phase-iv: #5dffb8;
+  --accent: #5b8fff;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+header {
+  grid-column: 1 / -1;
+  padding: 18px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+header h1 {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+header .subtitle {
+  font-size: 12px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+
+.version-badge {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--phase-ii);
+  border: 1px solid rgba(240,169,58,0.2);
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+/* Main viz area */
+.main-viz {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+}
+
+#phase-canvas {
+  display: block;
+  border-radius: 8px;
+  max-width: 100%;
+  max-height: calc(100vh - 180px);
+}
+
+/* Control panel */
+.sidebar {
+  grid-column: 2;
+  grid-row: 2;
+  border-left: 1px solid var(--border);
+  padding: 20px 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Phase timeline */
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.phase-node {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.phase-node.active {
+  color: var(--bg);
+  border-color: transparent;
+}
+
+.phase-node.active.phase-i { background: var(--phase-i); }
+.phase-node.active.phase-ii { background: var(--phase-ii); }
+.phase-node.active.phase-iii { background: var(--phase-iii); }
+.phase-node.active.phase-iv { background: var(--phase-iv); color: var(--bg); }
+
+.phase-node.warning {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.phase-arrow {
+  color: var(--text3);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* Load meter */
+.load-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.panel-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+.load-bar-wrap {
+  height: 24px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.load-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--phase-i), var(--phase-ii), var(--phase-iii));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.load-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1));
+}
+
+.load-threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--phase-iii);
+  box-shadow: 0 0 8px var(--phase-iii);
+}
+
+.load-value {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Pressure readout */
+.pressure-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pressure-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.pressure-label {
+  font-size: 9px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.pressure-value {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.pressure-value.low { color: var(--phase-i); }
+.pressure-value.med { color: var(--phase-ii); }
+.pressure-value.high { color: var(--phase-iii); }
+
+/* History spark */
+.spark-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+#spark-canvas {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
+}
+
+/* Options panel */
+.options-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.option-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.option-btn:last-child {
+  margin-bottom: 0;
+}
+
+.option-btn:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.option-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.option-btn.reinforce { border-left: 3px solid var(--phase-i); }
+.option-btn.redirect { border-left: 3px solid var(--accent); }
+.option-btn.break { border-left: 3px solid var(--phase-iii); }
+
+.option-btn .opt-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.option-btn .opt-desc {
+  font-size: 9px;
+  color: var(--text3);
+}
+
+/* Status log */
+.status-log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.log-content {
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--text2);
+}
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+}
+
+.log-time {
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+.log-entry.warn { color: var(--phase-ii); }
+.log-entry.crit { color: var(--phase-iii); }
+.log-entry.ok { color: var(--phase-i); }
+
+@media (max-width: 700px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .main-viz { grid-column: 1; grid-row: 2; }
+  .sidebar { grid-column: 1; grid-row: 3; border-left: none; border-top: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Phase II Dashboard</h1>
+  <span class="subtitle">excitation state monitor</span>
+  <span class="version-badge">v0.1</span>
+</header>
+
+<div class="main-viz">
+  <canvas id="phase-canvas" width="520" height="520"></canvas>
+</div>
+
+<aside class="sidebar">
+
+  <!-- Current Phase -->
+  <div class="timeline">
+    <div class="phase-node phase-i" data-phase="i">I<br>fix</div>
+    <span class="phase-arrow">→</span>
+    <div class="phase-node phase-ii" data-phase="ii">II<br>exc</div>
+    <span class="phase-arrow">→</span>
+    <div class="phase-node phase-iii" data-phase="iii">III<br>emg</div>
+    <span class="phase-arrow">→</span>
+    <div class="phase-node phase-iv" data-phase="iv">IV<br>re</div>
+  </div>
+
+  <!-- Load Meter -->
+  <div class="load-panel">
+    <div class="panel-label">boundary load</div>
+    <div class="load-bar-wrap">
+      <div class="load-bar" id="load-bar"></div>
+      <div class="load-threshold" id="load-threshold" style="left: 60%"></div>
+      <div class="load-value" id="load-value">0%</div>
+    </div>
+  </div>
+
+  <!-- Pressure Readout -->
+  <div class="pressure-grid">
+    <div class="pressure-box">
+      <div class="pressure-label">tension</div>
+      <div class="pressure-value low" id="pressure-tension">0</div>
+    </div>
+    <div class="pressure-box">
+      <div class="pressure-label">momentum</div>
+      <div class="pressure-value low" id="pressure-momentum">0</div>
+    </div>
+  </div>
+
+  <!-- History Spark -->
+  <div class="spark-panel">
+    <div class="panel-label">load history</div>
+    <canvas id="spark-canvas" width="280" height="48"></canvas>
+  </div>
+
+  <!-- Response Options -->
+  <div class="options-panel">
+    <div class="panel-label">boundary options</div>
+    <button class="option-btn reinforce" id="opt-reinforce">
+      <span class="opt-label">reinforce</span>
+      <span class="opt-desc">strengthen the membrane</span>
+    </button>
+    <button class="option-btn redirect" id="opt-redirect">
+      <span class="opt-label">redirect</span>
+      <span class="opt-desc">route pressure elsewhere</span>
+    </button>
+    <button class="option-btn break" id="opt-break">
+      <span class="opt-label">clean break</span>
+      <span class="opt-desc">allow crystallization</span>
+    </button>
+  </div>
+
+  <!-- Status Log -->
+  <div class="status-log">
+    <div class="panel-label">system log</div>
+    <div class="log-content" id="log-content"></div>
+  </div>
+
+</aside>
+
+<script>
+// === PHASE II DASHBOARD ===
+
+const canvas = document.getElementById('phase-canvas');
+const ctx = canvas.getContext('2d');
+const sparkCanvas = document.getElementById('spark-canvas');
+const sparkCtx = sparkCanvas.getContext('2d');
+
+// State
+let state = {
+  phase: 'i',
+  load: 0,
+  tension: 0,
+  momentum: 0,
+  threshold: 60,
+  history: [],
+  maxHistory: 60,
+  sporeArchive: 0,
+  options: { reinforce: false, redirect: false, break: false }
+};
+
+for (let i = 0; i < state.maxHistory; i++) {
+  state.history.push(0);
+}
+
+function updateUI() {
+  document.querySelectorAll('.phase-node').forEach(node => {
+    node.classList.remove('active', 'warning');
+    const p = node.dataset.phase;
+    const pMap = { 'i': 0, 'ii': 1, 'iii': 2, 'iv': 3 };
+    const currentIdx = pMap[state.phase];
+    const thisIdx = pMap[p];
+    
+    if (thisIdx <= currentIdx) {
+      node.classList.add('active');
+      node.classList.add('phase-' + p);
+    }
+  });
+  
+  if (state.phase === 'ii' && state.load > state.threshold * 0.7) {
+    document.querySelector('[data-phase="ii"]').classList.add('warning');
+  }
+  
+  document.getElementById('load-bar').style.width = state.load + '%';
+  document.getElementById('load-value').textContent = Math.round(state.load) + '%';
+  
+  const tEl = document.getElementById('pressure-tension');
+  const mEl = document.getElementById('pressure-momentum');
+  tEl.textContent = Math.round(state.tension);
+  mEl.textContent = Math.round(state.momentum);
+  
+  tEl.className = 'pressure-value ' + (state.tension < 30 ? 'low' : state.tension < 70 ? 'med' : 'high');
+  mEl.className = 'pressure-value ' + (state.momentum < 30 ? 'low' : state.momentum < 70 ? 'med' : 'high');
+  
+  state.options.reinforce = (state.phase === 'ii' && state.load > state.threshold * 0.5);
+  state.options.redirect = (state.phase === 'ii');
+  state.options.break = (state.phase === 'ii' && state.load > state.threshold * 0.8);
+  
+  document.getElementById('opt-reinforce').disabled = !state.options.reinforce;
+  document.getElementById('opt-redirect').disabled = !state.options.redirect;
+  document.getElementById('opt-break').disabled = !state.options.break;
+}
+
+function log(msg, type = 'info') {
+  const logEl = document.getElementById('log-content');
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.innerHTML = `<span class="log-time">${time}</span>${msg}`;
+  logEl.insertBefore(entry, logEl.firstChild);
+  
+  while (logEl.children.length > 20) {
+    logEl.removeChild(logEl.lastChild);
+  }
+}
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, w, h);
+  
+  const rings = [
+    { r: 220, phase: 'i', color: '#4aead0', label: 'FIXATION' },
+    { r: 170, phase: 'ii', color: '#f0a93a', label: 'EXCITATION' },
+    { r: 120, phase: 'iii', color: '#ff5555', label: 'EMERGENCE' },
+    { r: 70, phase: 'iv', color: '#5dffb8', label: 'REINTEGRATION' }
+  ];
+  
+  rings.forEach((ring, i) => {
+    const currentIdx = ['i', 'ii', 'iii', 'iv'].indexOf(state.phase);
+    const ringIdx = i;
+    const isActive = ringIdx <= currentIdx;
+    const isCurrent = ringIdx === currentIdx;
+    
+    ctx.beginPath();
+    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+    ctx.strokeStyle = isActive ? ring.color : 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = isCurrent ? 3 : 1;
+    ctx.stroke();
+    
+    if (isCurrent) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+      ctx.strokeStyle = ring.color + '44';
+      ctx.lineWidth = 12;
+      ctx.stroke();
+    }
+    
+    ctx.font = '10px IBM Plex Mono';
+    ctx.fillStyle = isActive ? ring.color : 'rgba(255,255,255,0.2)';
+    ctx.textAlign = 'center';
+    ctx.fillText(ring.label, cx, cy - ring.r - 8);
+  });
+  
+  const spokeCount = 12;
+  for (let i = 0; i < spokeCount; i++) {
+    const angle = (i / spokeCount) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * 70, cy + Math.sin(angle) * 70);
+    ctx.lineTo(cx + Math.cos(angle) * 220, cy + Math.sin(angle) * 220);
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  
+  const loadRadius = 70 + (state.load / 100) * 150;
+  const angle = (Date.now() / 1000) * 0.5;
+  
+  const mx = cx + Math.cos(angle) * loadRadius;
+  const my = cy + Math.sin(angle) * loadRadius;
+  
+  ctx.beginPath();
+  ctx.arc(mx, my, 12, 0, Math.PI * 2);
+  ctx.fillStyle = state.phase === 'ii' ? '#f0a93a' : 
+                 state.phase === 'iii' ? '#ff5555' : 
+                 state.phase === 'iv' ? '#5dffb8' : '#4aead0';
+  ctx.fill();
+  
+  if (state.phase === 'ii') {
+    const pulse = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+    ctx.beginPath();
+    ctx.arc(mx, my, 20 + pulse * 15, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(240,169,58,${0.3 - pulse * 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  
+  ctx.beginPath();
+  ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+  ctx.fillStyle = '#111118';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  ctx.font = '10px IBM Plex Mono';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('AXIS', cx, cy + 4);
+  
+  ctx.font = '24px IBM Plex Mono';
+  ctx.fillStyle = '#e8e6df';
+  ctx.textAlign = 'center';
+  ctx.fillText(Math.round(state.load) + '%', cx, cy + 50);
+  
+  ctx.font = '9px IBM Plex Mono';
+  ctx.fillStyle = '#555550';
+  ctx.textAlign = 'center';
+  ctx.fillText('BOUNDARY LOAD', cx, cy + 68);
+  
+  if (state.tension > 0) {
+    for (let i = 0; i < Math.min(state.tension / 10, 8); i++) {
+      const tAngle = angle + (i * Math.PI / 4);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(tAngle) * 40, cy + Math.sin(tAngle) * 40);
+      ctx.lineTo(cx + Math.cos(tAngle) * 55, cy + Math.sin(tAngle) * 55);
+      ctx.strokeStyle = '#f0a93a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  
+  if (state.sporeArchive > 0) {
+    ctx.font = '10px IBM Plex Mono';
+    ctx.fillStyle = '#5dffb8';
+    ctx.textAlign = 'center';
+    ctx.fillText('S' + state.sporeArchive, cx, h - 24);
+  }
+}
+
+function drawSpark() {
+  const w = sparkCanvas.width;
+  const h = sparkCanvas.height;
+  
+  sparkCtx.fillStyle = '#111118';
+  sparkCtx.fillRect(0, 0, w, h);
+  
+  sparkCtx.beginPath();
+  state.history.forEach((val, i) => {
+    const x = (i / state.maxHistory) * w;
+    const y = h - (val / 100) * h;
+    if (i === 0) sparkCtx.moveTo(x, y);
+    else sparkCtx.lineTo(x, y);
+  });
+  sparkCtx.strokeStyle = '#4aead0';
+  sparkCtx.lineWidth = 1.5;
+  sparkCtx.stroke();
+  
+  sparkCtx.lineTo(w, h);
+  sparkCtx.lineTo(0, h);
+  sparkCtx.closePath();
+  sparkCtx.fillStyle = 'rgba(74,234,208,0.1)';
+  sparkCtx.fill();
+  
+  const threshY = h - (state.threshold / 100) * h;
+  sparkCtx.beginPath();
+  sparkCtx.moveTo(0, threshY);
+  sparkCtx.lineTo(w, threshY);
+  sparkCtx.strokeStyle = 'rgba(255,85,85,0.3)';
+  sparkCtx.setLineDash([4, 4]);
+  sparkCtx.stroke();
+  sparkCtx.setLineDash([]);
+}
+
+function simulate() {
+  let delta = (Math.random() - 0.5) * 8;
+  delta += state.momentum * 0.15;
+  
+  if (state.tension > 50) {
+    delta -= (state.tension - 50) * 0.1;
+  }
+  
+  state.load = Math.max(0, Math.min(100, state.load + delta));
+  
+  state.tension = state.load * (0.8 + Math.random() * 0.4);
+  state.momentum = Math.abs(delta) * 10;
+  
+  const thresh = state.threshold;
+  if (state.phase === 'i' && state.load > thresh * 0.3) {
+    state.phase = 'ii';
+    log('boundary under load', 'warn');
+  } else if (state.phase === 'ii' && state.load > thresh) {
+    state.phase = 'iii';
+    log('limit broken — emergence', 'crit');
+    state.sporeArchive++;
+  } else if (state.phase === 'iii' && state.load < thresh * 0.2) {
+    state.phase = 'iv';
+    log('reintegration complete', 'ok');
+  } else if (state.phase === 'iv' && state.load < 10) {
+    state.phase = 'i';
+    log('fixation restored', 'ok');
+  }
+  
+  state.history.shift();
+  state.history.push(state.load);
+  
+  updateUI();
+}
+
+document.getElementById('opt-reinforce').addEventListener('click', () => {
+  if (!state.options.reinforce) return;
+  state.load = Math.max(0, state.load - 25);
+  state.tension *= 1.2;
+  log('membrane reinforced');
+});
+
+document.getElementById('opt-redirect').addEventListener('click', () => {
+  if (!state.options.redirect) return;
+  state.load = state.load * 0.6;
+  log('pressure redirected');
+});
+
+document.getElementById('opt-break').addEventListener('click', () => {
+  if (!state.options.break) return;
+  state.phase = 'iii';
+  state.sporeArchive++;
+  state.load = 0;
+  log('clean break — spore archived', 'crit');
+});
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const dist = Math.sqrt((x-cx)**2 + (y-cy)**2);
+  
+  if (dist > 70 && dist < 220) {
+    state.load = Math.min(100, state.load + 15);
+    state.tension = Math.min(100, state.tension + 10);
+    log('injected +15 load');
+  }
+});
+
+let lastTime = 0;
+function loop(time) {
+  if (time - lastTime > 100) {
+    simulate();
+    draw();
+    drawSpark();
+    lastTime = time;
+  }
+  requestAnimationFrame(loop);
+}
+
+log('dashboard initialized');
+updateUI();
+loop(0);
+</script>
+
+</body>
+</html>
