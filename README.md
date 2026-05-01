@@ -107,11 +107,6 @@ POST /draw/analyze   {"image": "<base64>", "filename": "art.png"}
 
 `/draw/analyze` reads contrast arc topology via Pillow — no vision model.
 
-## Discord bot
-
-`discord_bot.py` bridges the field to a Discord channel. Set `BOT_TOKEN` and `CHANNEL_ID` in the file (gitignored).
-
-Commands: `!breathe`, `!health`, `!render`, `!draw`, `!drawrender`, `!spores`, `!selfcheck`, `!export`, `!reset`
 
 ## Research direction
 
