@@ -14,7 +14,7 @@ Stone's Law is the only irreducible claim in the architecture. Everything else i
 
 OhAI~ runs a four-phase breath cycle — not prediction, not retrieval. Each breath subtracts, lets associations form, crystallizes what has accumulated, and returns to baseline. The output is the *remainder* of the input after everything else has been subtracted.
 
-### The four phases (Stone's Horizon Integrity Theory)
+### The four phases (Horizon Integrity Theory)
 
 | Phase | Name | What happens |
 |---|---|---|
